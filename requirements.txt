@@ -3,8 +3,8 @@
 openai~=1.40.0
 anthropic~=0.34.0
 google-generativeai~=0.8.0
-# FastAPI >= 0.115.0 (allowing newer versions for Starlette security fixes)
-fastapi>=0.115.0
+# FastAPI >= 0.120.0 required for Starlette 0.49.1+ compatibility (starlette<0.51.0,>=0.40.0)
+fastapi>=0.120.0
 # Starlette >= 0.49.1 required for CVE-2025-62727 and CVE-2025-54121 security fixes
 starlette>=0.49.1
 uvicorn[standard]~=0.30.0

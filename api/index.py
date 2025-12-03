@@ -19,7 +19,7 @@ from orchestral.api.server import app
 
 # Validate app is properly initialized
 if not isinstance(app, FastAPI):
-    raise RuntimeError("FastAPI app is not properly initialized: expected FastAPI instance")
+    raise TypeError(f"app must be a FastAPI instance, got {type(app).__name__}")
 
 # Export app for Vercel
 __all__ = ["app"]
