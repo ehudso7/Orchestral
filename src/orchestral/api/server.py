@@ -6,6 +6,7 @@ Provides REST API endpoints for multi-model AI orchestration.
 
 from __future__ import annotations
 
+import secrets
 import time
 from contextlib import asynccontextmanager
 from typing import Any, AsyncIterator
@@ -166,8 +167,6 @@ async def verify_api_key(
     x_api_key: str | None = Header(default=None),
 ) -> bool:
     """Verify API key if authentication is enabled."""
-    import secrets
-
     settings = get_settings()
     if not settings.server.require_auth:
         return True
@@ -176,10 +175,13 @@ async def verify_api_key(
         raise HTTPException(status_code=401, detail="API key required")
 
     # Use constant-time comparison to prevent timing attacks
-    is_valid = any(
-        secrets.compare_digest(x_api_key, key)
-        for key in settings.server.api_keys
-    )
+    # Compare against ALL keys without short-circuiting to avoid leaking
+    # timing information about which key position matches
+    is_valid = False
+    for key in settings.server.api_keys:
+        if secrets.compare_digest(x_api_key, key):
+            is_valid = True
+        # Don't break early - continue comparing all keys
 
     if not is_valid:
         raise HTTPException(status_code=403, detail="Invalid API key")
