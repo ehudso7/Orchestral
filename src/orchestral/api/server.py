@@ -177,11 +177,10 @@ async def verify_api_key(
     # Use constant-time comparison to prevent timing attacks
     # Compare against ALL keys without short-circuiting to avoid leaking
     # timing information about which key position matches
+    # Use bitwise OR to eliminate conditional branching (branch prediction side-channel)
     is_valid = False
     for key in settings.server.api_keys:
-        if secrets.compare_digest(x_api_key, key):
-            is_valid = True
-        # Don't break early - continue comparing all keys
+        is_valid |= secrets.compare_digest(x_api_key, key)
 
     if not is_valid:
         raise HTTPException(status_code=403, detail="Invalid API key")
