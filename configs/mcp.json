@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "orchestral": {
+      "command": "orchestral",
+      "args": ["mcp"],
+      "description": "AI Model Orchestration Platform - Query ChatGPT, Claude, and Gemini",
+      "env": {
+        "OPENAI_API_KEY": "${OPENAI_API_KEY}",
+        "ANTHROPIC_API_KEY": "${ANTHROPIC_API_KEY}",
+        "GOOGLE_API_KEY": "${GOOGLE_API_KEY}"
+      }
+    }
+  }
+}
