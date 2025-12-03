@@ -12,7 +12,8 @@ from orchestral.utils.retry import (
     retry_async,
     RetryContext,
 )
-from orchestral.providers.base import RateLimitError, ProviderError, ModelProvider
+from orchestral.providers.base import RateLimitError
+from orchestral.core.models import ModelProvider
 
 
 class TestMetrics:

@@ -7,7 +7,7 @@ Defines unified types for multi-model orchestration, comparison, and routing.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Literal
 
@@ -56,9 +56,9 @@ class ModelSpec:
             "claude-opus-4-5-20251101": "Claude Opus 4.5",
             "claude-sonnet-4-5-20250929": "Claude Sonnet 4.5",
             "claude-haiku-4-5-20251001": "Claude Haiku 4.5",
-            "gemini-3-ultra": "Gemini 3 Ultra",
             "gemini-3-pro-preview": "Gemini 3 Pro",
-            "gemini-3-flash": "Gemini 3 Flash",
+            "gemini-2.5-pro": "Gemini 2.5 Pro",
+            "gemini-2.5-flash": "Gemini 2.5 Flash",
         }
         return names.get(self.model_id, self.model_id)
 
@@ -70,7 +70,7 @@ MODEL_REGISTRY: dict[str, ModelSpec] = {
         provider=ModelProvider.OPENAI,
         model_id="gpt-5.1",
         tier=ModelTier.FLAGSHIP,
-        context_window=272_000,
+        context_window=400_000,
         max_output_tokens=128_000,
         supports_vision=True,
         supports_audio=True,
@@ -128,34 +128,35 @@ MODEL_REGISTRY: dict[str, ModelSpec] = {
         input_cost_per_million=1.00,
         output_cost_per_million=5.00,
     ),
-    # Google Models
-    "gemini-3-ultra": ModelSpec(
+    # Google Models - Note: gemini-3-pro-preview is the confirmed API model ID
+    # gemini-2.5-pro and gemini-2.5-flash are also available
+    "gemini-3-pro-preview": ModelSpec(
         provider=ModelProvider.GOOGLE,
-        model_id="gemini-3-ultra",
+        model_id="gemini-3-pro-preview",
         tier=ModelTier.FLAGSHIP,
         context_window=1_000_000,
         max_output_tokens=65_536,
         supports_vision=True,
         supports_audio=True,
         supports_video=True,
-        input_cost_per_million=3.00,
-        output_cost_per_million=15.00,
+        input_cost_per_million=2.00,
+        output_cost_per_million=12.00,
     ),
-    "gemini-3-pro-preview": ModelSpec(
+    "gemini-2.5-pro": ModelSpec(
         provider=ModelProvider.GOOGLE,
-        model_id="gemini-3-pro-preview",
+        model_id="gemini-2.5-pro",
         tier=ModelTier.STANDARD,
         context_window=1_000_000,
         max_output_tokens=32_768,
         supports_vision=True,
         supports_audio=True,
         supports_video=True,
-        input_cost_per_million=2.00,
-        output_cost_per_million=12.00,
+        input_cost_per_million=1.25,
+        output_cost_per_million=5.00,
     ),
-    "gemini-3-flash": ModelSpec(
+    "gemini-2.5-flash": ModelSpec(
         provider=ModelProvider.GOOGLE,
-        model_id="gemini-3-flash",
+        model_id="gemini-2.5-flash",
         tier=ModelTier.FAST,
         context_window=1_000_000,
         max_output_tokens=8_192,
@@ -282,7 +283,7 @@ class CompletionResponse(BaseModel):
     finish_reason: str | None = None
     usage: UsageStats = Field(default_factory=UsageStats)
     latency_ms: float = 0.0
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -326,7 +327,7 @@ class ComparisonResult(BaseModel):
     results: list[ModelResult]
     winner: str | None = None  # Model ID of the "best" response
     comparison_notes: str | None = None
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     @property
     def successful_results(self) -> list[ModelResult]:
