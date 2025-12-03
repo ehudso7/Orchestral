@@ -9,7 +9,7 @@ from __future__ import annotations
 import asyncio
 from abc import ABC, abstractmethod
 from typing import AsyncIterator, Any
-from datetime import datetime
+from datetime import datetime, timezone
 import uuid
 
 from orchestral.core.models import (
@@ -203,6 +203,6 @@ class BaseProvider(ABC):
             finish_reason=finish_reason,
             usage=usage or UsageStats(),
             latency_ms=latency_ms,
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
             metadata=metadata or {},
         )

@@ -14,7 +14,7 @@ from __future__ import annotations
 import asyncio
 import uuid
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, AsyncIterator
 
 import structlog
@@ -53,7 +53,7 @@ TASK_MODEL_RECOMMENDATIONS: dict[TaskCategory, list[str]] = {
     TaskCategory.REASONING: [
         "gpt-5.1",  # Adaptive reasoning
         "claude-opus-4-5-20251101",
-        "gemini-3-ultra",
+        "gemini-3-pro-preview",
     ],
     TaskCategory.CREATIVE: [
         "gpt-5.1",
@@ -61,8 +61,8 @@ TASK_MODEL_RECOMMENDATIONS: dict[TaskCategory, list[str]] = {
         "claude-sonnet-4-5-20250929",
     ],
     TaskCategory.MULTIMODAL: [
-        "gemini-3-ultra",  # Best multimodal (text, image, video, audio)
-        "gemini-3-pro-preview",
+        "gemini-3-pro-preview",  # Best multimodal (text, image, video, audio)
+        "gemini-2.5-pro",
         "gpt-5.1",
     ],
     TaskCategory.ANALYSIS: [
@@ -73,7 +73,7 @@ TASK_MODEL_RECOMMENDATIONS: dict[TaskCategory, list[str]] = {
     TaskCategory.CONVERSATION: [
         "gpt-4o",
         "claude-sonnet-4-5-20250929",
-        "gemini-3-flash",
+        "gemini-2.5-flash",
     ],
     TaskCategory.SUMMARIZATION: [
         "claude-opus-4-5-20251101",
@@ -327,7 +327,7 @@ class Orchestrator:
             id=f"cmp-{uuid.uuid4().hex[:16]}",
             prompt=prompt,
             results=model_results,
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
         )
 
     async def route(

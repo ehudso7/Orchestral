@@ -9,7 +9,7 @@ from __future__ import annotations
 import time
 from collections import defaultdict
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from threading import Lock
 from typing import Any
 
@@ -74,7 +74,7 @@ class Metrics:
         self._requests: list[RequestMetrics] = []
         self._provider_metrics: dict[str, ProviderMetrics] = defaultdict(ProviderMetrics)
         self._model_metrics: dict[str, ProviderMetrics] = defaultdict(ProviderMetrics)
-        self._start_time = datetime.utcnow()
+        self._start_time = datetime.now(timezone.utc)
 
     def record_completion(
         self,
@@ -96,7 +96,7 @@ class Metrics:
         """
         with self._lock:
             request = RequestMetrics(
-                timestamp=datetime.utcnow(),
+                timestamp=datetime.now(timezone.utc),
                 provider=provider,
                 model=model,
                 latency_ms=latency_ms,
@@ -138,7 +138,7 @@ class Metrics:
         """
         with self._lock:
             request = RequestMetrics(
-                timestamp=datetime.utcnow(),
+                timestamp=datetime.now(timezone.utc),
                 provider=provider or "unknown",
                 model=model,
                 latency_ms=0,
@@ -181,7 +181,7 @@ class Metrics:
                 for pm in self._provider_metrics.values()
             )
 
-            uptime = (datetime.utcnow() - self._start_time).total_seconds()
+            uptime = (datetime.now(timezone.utc) - self._start_time).total_seconds()
 
             return {
                 "uptime_seconds": uptime,
@@ -242,7 +242,7 @@ class Metrics:
             self._requests.clear()
             self._provider_metrics.clear()
             self._model_metrics.clear()
-            self._start_time = datetime.utcnow()
+            self._start_time = datetime.now(timezone.utc)
 
 
 # Global metrics instance

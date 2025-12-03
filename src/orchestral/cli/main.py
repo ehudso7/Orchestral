@@ -224,9 +224,9 @@ def compare(
 def route(
     prompt: str = typer.Argument(..., help="The prompt to route"),
     strategy: str = typer.Option("best", "--strategy", "-s",
-        help="Routing strategy: single, fastest, cheapest, best, compare, fallback"),
+        help="Routing strategy: single, fastest, cheapest, best, compare, fallback, consensus"),
     task: str = typer.Option(None, "--task", "-t",
-        help="Task category: coding, reasoning, creative, analysis, multimodal, conversation"),
+        help="Task category: coding, reasoning, creative, analysis, multimodal, conversation, summarization, translation"),
     temperature: float = typer.Option(0.7, "--temp", help="Temperature"),
 ):
     """Route request to optimal model based on strategy."""
@@ -239,6 +239,7 @@ def route(
         "best": RoutingStrategy.BEST_FOR_TASK,
         "compare": RoutingStrategy.COMPARE_ALL,
         "fallback": RoutingStrategy.FALLBACK,
+        "consensus": RoutingStrategy.CONSENSUS,
     }
 
     category_map = {
@@ -248,6 +249,8 @@ def route(
         "analysis": TaskCategory.ANALYSIS,
         "multimodal": TaskCategory.MULTIMODAL,
         "conversation": TaskCategory.CONVERSATION,
+        "summarization": TaskCategory.SUMMARIZATION,
+        "translation": TaskCategory.TRANSLATION,
     }
 
     routing = RoutingConfig(

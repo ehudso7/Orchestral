@@ -166,6 +166,8 @@ async def verify_api_key(
     x_api_key: str | None = Header(default=None),
 ) -> bool:
     """Verify API key if authentication is enabled."""
+    import secrets
+
     settings = get_settings()
     if not settings.server.require_auth:
         return True
@@ -173,7 +175,13 @@ async def verify_api_key(
     if not x_api_key:
         raise HTTPException(status_code=401, detail="API key required")
 
-    if x_api_key not in settings.server.api_keys:
+    # Use constant-time comparison to prevent timing attacks
+    is_valid = any(
+        secrets.compare_digest(x_api_key, key)
+        for key in settings.server.api_keys
+    )
+
+    if not is_valid:
         raise HTTPException(status_code=403, detail="Invalid API key")
 
     return True

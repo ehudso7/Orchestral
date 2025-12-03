@@ -219,7 +219,8 @@ class OpenAIProvider(BaseProvider):
         tokenizer = self._get_tokenizer(model)
 
         # Token overhead per message (role, separators, etc.)
-        tokens_per_message = 4
+        # Per OpenAI's tiktoken docs: 3 tokens per message + 1 if name is included
+        tokens_per_message = 3
 
         total = 0
         for msg in messages:
