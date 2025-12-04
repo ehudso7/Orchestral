@@ -124,7 +124,7 @@ async def cost_optimized():
 
     routing = RoutingConfig(
         strategy=RoutingStrategy.CHEAPEST,
-        models=["gpt-4o-mini", "claude-haiku-4-5-20251001", "gemini-3-flash"],
+        models=["gpt-4o-mini", "claude-haiku-4-5-20251001", "gemini-2.5-flash"],
     )
 
     response = await orch.route(
