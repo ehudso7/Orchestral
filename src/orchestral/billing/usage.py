@@ -6,8 +6,8 @@ Provides detailed usage tracking per API key for billing and analytics.
 
 from __future__ import annotations
 
+import asyncio
 import json
-import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any
@@ -255,21 +255,25 @@ class UsageTracker:
             List of usage records
         """
         if self._redis:
+            loop = asyncio.get_event_loop()
             key = f"{self.USAGE_PREFIX}{key_id}"
+
+            # Get records from sorted set (in executor to avoid blocking)
+            def _get_data():
+                if start_time and end_time:
+                    return self._redis.zrangebyscore(
+                        key,
+                        start_time.timestamp(),
+                        end_time.timestamp(),
+                        start=0,
+                        num=limit,
+                    )
+                else:
+                    return self._redis.zrevrange(key, 0, limit - 1)
+
+            data = await loop.run_in_executor(None, _get_data)
+
             records = []
-
-            # Get records from sorted set
-            if start_time and end_time:
-                data = self._redis.zrangebyscore(
-                    key,
-                    start_time.timestamp(),
-                    end_time.timestamp(),
-                    start=0,
-                    num=limit,
-                )
-            else:
-                data = self._redis.zrevrange(key, 0, limit - 1)
-
             for item in data:
                 record_data = json.loads(item)
                 records.append(UsageRecord.from_dict(record_data))
@@ -308,9 +312,10 @@ class UsageTracker:
         end = date.replace(hour=23, minute=59, second=59, microsecond=999999)
 
         if self._redis:
+            loop = asyncio.get_event_loop()
             key = f"{self.DAILY_PREFIX}{full_key}"
             # Use hgetall since we store with hincrby/hincrbyfloat
-            data = self._redis.hgetall(key)
+            data = await loop.run_in_executor(None, self._redis.hgetall, key)
             if data:
                 return self._parse_redis_aggregate(key_id, data, start, end)
 
@@ -351,9 +356,10 @@ class UsageTracker:
         end = datetime(year, month, last_day, 23, 59, 59, tzinfo=timezone.utc)
 
         if self._redis:
+            loop = asyncio.get_event_loop()
             key = f"{self.MONTHLY_PREFIX}{full_key}"
             # Use hgetall since we store with hincrby/hincrbyfloat
-            data = self._redis.hgetall(key)
+            data = await loop.run_in_executor(None, self._redis.hgetall, key)
             if data:
                 return self._parse_redis_aggregate(key_id, data, start, end)
 
@@ -454,14 +460,20 @@ class UsageTracker:
     async def _store_record(self, record: UsageRecord) -> None:
         """Store a usage record."""
         if self._redis:
+            loop = asyncio.get_event_loop()
             key = f"{self.USAGE_PREFIX}{record.key_id}"
-            self._redis.zadd(
-                key,
-                {json.dumps(record.to_dict()): record.timestamp.timestamp()},
-            )
-            # Keep only last 30 days of detailed records
-            cutoff = time.time() - (30 * 24 * 60 * 60)
-            self._redis.zremrangebyscore(key, 0, cutoff)
+
+            def _store():
+                import time as time_module
+                self._redis.zadd(
+                    key,
+                    {json.dumps(record.to_dict()): record.timestamp.timestamp()},
+                )
+                # Keep only last 30 days of detailed records
+                cutoff = time_module.time() - (30 * 24 * 60 * 60)
+                self._redis.zremrangebyscore(key, 0, cutoff)
+
+            await loop.run_in_executor(None, _store)
         else:
             self._local_records.append(record)
             # Keep only last 10000 records in memory
@@ -501,22 +513,25 @@ class UsageTracker:
         expire_days: int,
     ) -> None:
         """Update a Redis aggregate."""
-        pipe = self._redis.pipeline()
+        loop = asyncio.get_event_loop()
 
-        pipe.hincrby(key, "total_requests", 1)
-        if record.success:
-            pipe.hincrby(key, "successful_requests", 1)
-        else:
-            pipe.hincrby(key, "failed_requests", 1)
-        pipe.hincrby(key, "total_input_tokens", record.input_tokens)
-        pipe.hincrby(key, "total_output_tokens", record.output_tokens)
-        pipe.hincrbyfloat(key, "total_cost_usd", record.cost_usd)
-        pipe.hincrbyfloat(key, "total_latency_ms", record.latency_ms)
-        pipe.hincrby(key, f"model:{record.model}", 1)
-        pipe.hincrby(key, f"provider:{record.provider}", 1)
-        pipe.expire(key, expire_days * 24 * 60 * 60)
+        def _execute_pipeline():
+            pipe = self._redis.pipeline()
+            pipe.hincrby(key, "total_requests", 1)
+            if record.success:
+                pipe.hincrby(key, "successful_requests", 1)
+            else:
+                pipe.hincrby(key, "failed_requests", 1)
+            pipe.hincrby(key, "total_input_tokens", record.input_tokens)
+            pipe.hincrby(key, "total_output_tokens", record.output_tokens)
+            pipe.hincrbyfloat(key, "total_cost_usd", record.cost_usd)
+            pipe.hincrbyfloat(key, "total_latency_ms", record.latency_ms)
+            pipe.hincrby(key, f"model:{record.model}", 1)
+            pipe.hincrby(key, f"provider:{record.provider}", 1)
+            pipe.expire(key, expire_days * 24 * 60 * 60)
+            pipe.execute()
 
-        pipe.execute()
+        await loop.run_in_executor(None, _execute_pipeline)
 
     def _update_local_aggregate(
         self,

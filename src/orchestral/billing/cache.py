@@ -6,9 +6,9 @@ Provides intelligent caching to reduce API costs for repeated queries.
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import json
-import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any
@@ -312,17 +312,24 @@ class ResponseCache:
         count = 0
 
         if self._redis:
+            loop = asyncio.get_event_loop()
             pattern = f"{self.CACHE_PREFIX}{model or '*'}:*"
-            for key in self._redis.scan_iter(pattern):
+
+            # Collect keys first (in executor to avoid blocking)
+            keys_to_check = await loop.run_in_executor(
+                None, lambda: list(self._redis.scan_iter(pattern))
+            )
+
+            for key in keys_to_check:
                 if older_than:
-                    data = self._redis.get(key)
+                    data = await loop.run_in_executor(None, self._redis.get, key)
                     if data:
                         entry = CacheEntry.from_dict(json.loads(data))
                         if entry.created_at < older_than:
-                            self._redis.delete(key)
+                            await loop.run_in_executor(None, self._redis.delete, key)
                             count += 1
                 else:
-                    self._redis.delete(key)
+                    await loop.run_in_executor(None, self._redis.delete, key)
                     count += 1
         else:
             keys_to_delete = []
@@ -341,9 +348,13 @@ class ResponseCache:
         return count
 
     def get_stats(self) -> CacheStats:
-        """Get cache statistics."""
+        """Get cache statistics (sync for simplicity)."""
         if self._redis:
-            self._stats.cache_size = len(list(self._redis.scan_iter(f"{self.CACHE_PREFIX}*")))
+            # Use a simple counter instead of loading all keys
+            count = 0
+            for _ in self._redis.scan_iter(f"{self.CACHE_PREFIX}*"):
+                count += 1
+            self._stats.cache_size = count
         else:
             self._stats.cache_size = len(self._local_cache)
 
@@ -354,14 +365,18 @@ class ResponseCache:
         self._stats.total_cost_saved_usd += cost_usd
 
         if self._redis:
-            self._redis.hincrbyfloat(self.STATS_KEY, "total_cost_saved_usd", cost_usd)
+            loop = asyncio.get_event_loop()
+            await loop.run_in_executor(
+                None, lambda: self._redis.hincrbyfloat(self.STATS_KEY, "total_cost_saved_usd", cost_usd)
+            )
 
     async def _get_entry(self, cache_key: str) -> CacheEntry | None:
         """Get a cache entry."""
         full_key = f"{self.CACHE_PREFIX}{cache_key}"
 
         if self._redis:
-            data = self._redis.get(full_key)
+            loop = asyncio.get_event_loop()
+            data = await loop.run_in_executor(None, self._redis.get, full_key)
             if data:
                 return CacheEntry.from_dict(json.loads(data))
             return None
@@ -378,7 +393,10 @@ class ResponseCache:
             if ttl <= 0:
                 logger.debug("Skipping cache store for expired entry", cache_key=entry.cache_key)
                 return
-            self._redis.setex(full_key, ttl, json.dumps(entry.to_dict()))
+            loop = asyncio.get_event_loop()
+            await loop.run_in_executor(
+                None, lambda: self._redis.setex(full_key, ttl, json.dumps(entry.to_dict()))
+            )
         else:
             self._local_cache[entry.cache_key] = entry
 
@@ -397,6 +415,7 @@ class ResponseCache:
         full_key = f"{self.CACHE_PREFIX}{cache_key}"
 
         if self._redis:
-            self._redis.delete(full_key)
+            loop = asyncio.get_event_loop()
+            await loop.run_in_executor(None, self._redis.delete, full_key)
         else:
             self._local_cache.pop(cache_key, None)

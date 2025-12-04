@@ -6,6 +6,7 @@ Provides persistent, distributed rate limiting that works across serverless inst
 
 from __future__ import annotations
 
+import asyncio
 import time
 from dataclasses import dataclass
 from typing import Any
@@ -107,21 +108,18 @@ class RateLimiter:
         window_start: float,
     ) -> RateLimitResult:
         """Check rate limit using Redis."""
-        pipe = self._redis.pipeline()
+        loop = asyncio.get_event_loop()
 
-        # Remove old entries outside the window
-        pipe.zremrangebyscore(key, 0, window_start)
+        # Run sync Redis pipeline in executor to avoid blocking
+        def _execute_pipeline():
+            pipe = self._redis.pipeline()
+            pipe.zremrangebyscore(key, 0, window_start)
+            pipe.zcard(key)
+            pipe.zadd(key, {str(now): now})
+            pipe.expire(key, window * 2)
+            return pipe.execute()
 
-        # Count current requests in window
-        pipe.zcard(key)
-
-        # Add current request
-        pipe.zadd(key, {str(now): now})
-
-        # Set expiry on the key
-        pipe.expire(key, window * 2)
-
-        results = pipe.execute()
+        results = await loop.run_in_executor(None, _execute_pipeline)
         current_count = results[1]
 
         remaining = limit - current_count - 1
@@ -129,8 +127,10 @@ class RateLimiter:
         reset_at = now + window
 
         if not allowed:
-            # Calculate retry after
-            oldest = self._redis.zrange(key, 0, 0, withscores=True)
+            # Calculate retry after - run in executor
+            oldest = await loop.run_in_executor(
+                None, lambda: self._redis.zrange(key, 0, 0, withscores=True)
+            )
             if oldest:
                 retry_after = int(oldest[0][1] + window - now) + 1
             else:
@@ -237,8 +237,13 @@ class RateLimiter:
         key = f"{self.KEY_PREFIX}{identifier}"
 
         if self._redis:
-            self._redis.zremrangebyscore(key, 0, window_start)
-            return self._redis.zcard(key)
+            loop = asyncio.get_event_loop()
+
+            def _get_count():
+                self._redis.zremrangebyscore(key, 0, window_start)
+                return self._redis.zcard(key)
+
+            return await loop.run_in_executor(None, _get_count)
         else:
             if key in self._local_store:
                 self._local_store[key] = [
@@ -257,7 +262,8 @@ class RateLimiter:
         key = f"{self.KEY_PREFIX}{identifier}"
 
         if self._redis:
-            self._redis.delete(key)
+            loop = asyncio.get_event_loop()
+            await loop.run_in_executor(None, self._redis.delete, key)
         else:
             self._local_store.pop(key, None)
 
