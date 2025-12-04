@@ -7,10 +7,13 @@ All provider implementations must inherit from BaseProvider.
 from __future__ import annotations
 
 import asyncio
+import logging
 from abc import ABC, abstractmethod
 from typing import AsyncIterator, Any
 from datetime import datetime, timezone
 import uuid
+
+logger = logging.getLogger(__name__)
 
 from orchestral.core.models import (
     Message,
@@ -82,9 +85,12 @@ class BaseProvider(ABC):
     - complete_async(): Asynchronous completion
     - stream(): Streaming completion
     - count_tokens(): Token counting
+
+    Subclasses should set _health_check_model to a valid model for that provider.
     """
 
     provider: ModelProvider
+    _health_check_model: str = "gpt-4o"  # Override in subclasses
 
     def __init__(self, api_key: str | None = None, **kwargs: Any):
         """Initialize the provider with optional API key."""
@@ -167,18 +173,29 @@ class BaseProvider(ABC):
         """
         Check if the provider is available and configured correctly.
 
+        Uses _health_check_model class attribute for the test request.
+        Subclasses should set this to a valid model for their provider.
+
         Returns:
             True if healthy, False otherwise
         """
         try:
-            # Simple test request
             test_request = CompletionRequest(
                 messages=[Message.user("Say 'OK'")],
-                config=ModelConfig(max_tokens=10, temperature=0),
+                config=ModelConfig(
+                    model=self._health_check_model,
+                    max_tokens=10,
+                    temperature=0,
+                ),
             )
             response = await self.complete_async(test_request)
             return response is not None and len(response.content) > 0
-        except Exception:
+        except Exception as e:
+            logger.debug(
+                "Health check failed for %s: %s",
+                self.provider.value if hasattr(self, 'provider') else 'unknown',
+                str(e),
+            )
             return False
 
     def _create_response_id(self) -> str:

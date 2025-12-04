@@ -42,6 +42,7 @@ class AnthropicProvider(BaseProvider):
     """
 
     provider = ModelProvider.ANTHROPIC
+    _health_check_model = "claude-haiku-4-5-20251001"  # Fast/cheap model for health checks
 
     # Approximate tokens per character for Claude
     CHARS_PER_TOKEN = 4

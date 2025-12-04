@@ -43,6 +43,7 @@ class GoogleProvider(BaseProvider):
     """
 
     provider = ModelProvider.GOOGLE
+    _health_check_model = "gemini-2.5-flash"  # Fast/cheap model for health checks
 
     # Approximate tokens per character for Gemini
     CHARS_PER_TOKEN = 4
