@@ -39,6 +39,10 @@ dependencies = [
     "sse-starlette>=2.1.0",
     "PyYAML>=6.0.0",
     "pillow>=10.4.0",
+    # Commercial/Scale dependencies
+    "redis>=5.0.0",
+    "hiredis>=2.3.0",
+    "cryptography>=41.0.0",
 ]
 
 [project.optional-dependencies]

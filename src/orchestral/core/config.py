@@ -116,6 +116,62 @@ class OrchestratorSettings(BaseSettings):
         return v
 
 
+class RedisSettings(BaseSettings):
+    """Redis configuration for commercial features."""
+
+    model_config = SettingsConfigDict(
+        env_prefix="REDIS_",
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
+
+    url: str | None = Field(default=None, alias="REDIS_URL")
+    host: str = "localhost"
+    port: int = 6379
+    password: SecretStr | None = None
+    db: int = 0
+    ssl: bool = False
+
+    # Connection pool settings
+    max_connections: int = 10
+    socket_timeout: float = 5.0
+
+    @property
+    def is_configured(self) -> bool:
+        """Check if Redis is configured."""
+        return self.url is not None or self.host != "localhost"
+
+
+class BillingSettings(BaseSettings):
+    """Billing and commercial settings."""
+
+    model_config = SettingsConfigDict(
+        env_prefix="ORCHESTRAL_BILLING_",
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
+
+    # Feature flags
+    enabled: bool = True
+    usage_tracking_enabled: bool = True
+    budget_alerts_enabled: bool = True
+
+    # Caching
+    cache_enabled: bool = True
+    cache_ttl_seconds: int = 3600
+    cache_max_entries: int = 10000
+
+    # Budget defaults
+    default_monthly_budget_usd: float = 100.0
+    budget_alert_threshold: float = 0.8  # Alert at 80%
+    hard_budget_limit: bool = False  # If True, block requests over budget
+
+    # Webhook for alerts
+    alert_webhook_url: str | None = None
+
+
 class ServerSettings(BaseSettings):
     """API server settings."""
 
@@ -135,11 +191,16 @@ class ServerSettings(BaseSettings):
     # Rate limiting
     rate_limit_requests: int = 100
     rate_limit_window_seconds: int = 60
+    rate_limit_by_key: bool = True  # Use per-API-key limits if True
 
     # Authentication
     api_key_header: str = "X-API-Key"
-    require_auth: bool = False
+    require_auth: bool = True  # Default to True for commercial
     api_keys: list[str] = Field(default_factory=list)
+
+    # Admin API
+    admin_api_enabled: bool = True
+    admin_api_key: SecretStr | None = None
 
 
 class Settings(BaseSettings):
@@ -154,10 +215,17 @@ class Settings(BaseSettings):
     providers: ProviderSettings = Field(default_factory=ProviderSettings)
     orchestrator: OrchestratorSettings = Field(default_factory=OrchestratorSettings)
     server: ServerSettings = Field(default_factory=ServerSettings)
+    redis: RedisSettings = Field(default_factory=RedisSettings)
+    billing: BillingSettings = Field(default_factory=BillingSettings)
 
     # Environment
     environment: str = Field(default="development", alias="ENVIRONMENT")
     debug: bool = Field(default=False, alias="DEBUG")
+
+    @property
+    def is_production(self) -> bool:
+        """Check if running in production."""
+        return self.environment.lower() == "production"
 
     @classmethod
     def from_yaml(cls, path: str | Path) -> "Settings":
