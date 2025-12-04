@@ -251,3 +251,25 @@ class AnthropicProvider(BaseProvider):
             total += self.count_tokens(content)
             total += 4  # Overhead for message structure
         return total
+
+    async def health_check(self) -> bool:
+        """
+        Check if the Anthropic provider is available and configured correctly.
+
+        Returns:
+            True if healthy, False otherwise
+        """
+        try:
+            # Use Claude Haiku for health checks (fastest/cheapest)
+            test_request = CompletionRequest(
+                messages=[Message.user("Say 'OK'")],
+                config=ModelConfig(
+                    model="claude-haiku-4-5-20251001",
+                    max_tokens=10,
+                    temperature=0,
+                ),
+            )
+            response = await self.complete_async(test_request)
+            return response is not None and len(response.content) > 0
+        except Exception:
+            return False
