@@ -443,11 +443,15 @@ async def health_check(
     provider_health = await orch.health_check()
     redis_healthy = redis_client is not None
 
+    cache_stats = None
+    if response_cache:
+        cache_stats = (await response_cache.get_stats()).to_dict()
+
     return {
         "status": "healthy" if any(provider_health.values()) else "degraded",
         "providers": provider_health,
         "redis": redis_healthy,
-        "cache": response_cache.get_stats().to_dict() if response_cache else None,
+        "cache": cache_stats,
     }
 
 
@@ -609,12 +613,21 @@ async def simple_completion(
         if cached:
             # Use actual token counts from cache for accurate cost savings
             usage_data = cached.response_data.get("usage", {})
+            input_tokens = usage_data.get("input_tokens", 100)  # Fallback for old entries
+            output_tokens = usage_data.get("output_tokens", len(cached.response_content) // 4)
             cost_saved = usage_tracker.calculate_cost(
                 request.model,
-                usage_data.get("input_tokens", 100),  # Fallback for old entries
-                usage_data.get("output_tokens", len(cached.response_content) // 4),
+                input_tokens,
+                output_tokens,
             ) if usage_tracker else 0.0
             await response_cache.record_cost_saved(cost_saved)
+
+            # Ensure total_tokens is present for consistency with non-cached responses
+            usage_response = {
+                "input_tokens": input_tokens,
+                "output_tokens": output_tokens,
+                "total_tokens": usage_data.get("total_tokens", input_tokens + output_tokens),
+            }
 
             return CompletionResponseModel(
                 id=f"cached-{cached.cache_key[:16]}",
@@ -622,7 +635,7 @@ async def simple_completion(
                 provider=cached.response_data.get("provider", "cached"),
                 content=cached.response_content,
                 finish_reason=cached.response_data.get("finish_reason", "stop"),
-                usage=usage_data,
+                usage=usage_response,
                 latency_ms=0,
                 cached=True,
                 cost_usd=0.0,
@@ -654,6 +667,7 @@ async def simple_completion(
                     "usage": {
                         "input_tokens": response.usage.input_tokens,
                         "output_tokens": response.usage.output_tokens,
+                        "total_tokens": response.usage.total_tokens,
                     },
                 },
                 request.temperature,
@@ -1028,7 +1042,7 @@ async def get_metrics(
     summary = metrics.get_summary()
 
     if response_cache:
-        summary["cache"] = response_cache.get_stats().to_dict()
+        summary["cache"] = (await response_cache.get_stats()).to_dict()
 
     return summary
 
