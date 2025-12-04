@@ -184,3 +184,97 @@ class TestProviderTokenCounting:
         # Should approximate ~4 chars per token
         count = provider.count_tokens("a" * 400)
         assert 90 <= count <= 110  # Approximately 100 tokens
+
+
+class TestProviderHealthCheck:
+    """Tests for provider health check functionality."""
+
+    def test_openai_health_check_model(self):
+        """Test that OpenAI provider uses gpt-4o for health checks."""
+        provider = OpenAIProvider(api_key="test-key")
+        assert provider._health_check_model == "gpt-4o"
+
+    def test_anthropic_health_check_model(self):
+        """Test that Anthropic provider uses Claude Haiku for health checks."""
+        provider = AnthropicProvider(api_key="test-key")
+        assert provider._health_check_model == "claude-haiku-4-5-20251001"
+
+    def test_google_health_check_model(self):
+        """Test that Google provider uses Gemini Flash for health checks."""
+        with patch("google.generativeai.configure"):
+            provider = GoogleProvider(api_key="test-key")
+            assert provider._health_check_model == "gemini-2.5-flash"
+
+    @pytest.mark.asyncio
+    async def test_health_check_success(self):
+        """Test successful health check returns True."""
+        provider = OpenAIProvider(api_key="test-key")
+
+        mock_response = MagicMock()
+        mock_response.content = "OK"
+
+        with patch.object(provider, "complete_async", new_callable=AsyncMock) as mock_complete:
+            mock_complete.return_value = mock_response
+            result = await provider.health_check()
+
+            assert result is True
+            mock_complete.assert_called_once()
+            # Verify the correct model was used
+            call_args = mock_complete.call_args[0][0]
+            assert call_args.config.model == "gpt-4o"
+
+    @pytest.mark.asyncio
+    async def test_health_check_failure(self):
+        """Test health check returns False on exception."""
+        provider = OpenAIProvider(api_key="test-key")
+
+        with patch.object(provider, "complete_async", new_callable=AsyncMock) as mock_complete:
+            mock_complete.side_effect = Exception("API error")
+            result = await provider.health_check()
+
+            assert result is False
+
+    @pytest.mark.asyncio
+    async def test_health_check_empty_response(self):
+        """Test health check returns False on empty response."""
+        provider = OpenAIProvider(api_key="test-key")
+
+        mock_response = MagicMock()
+        mock_response.content = ""
+
+        with patch.object(provider, "complete_async", new_callable=AsyncMock) as mock_complete:
+            mock_complete.return_value = mock_response
+            result = await provider.health_check()
+
+            assert result is False
+
+    @pytest.mark.asyncio
+    async def test_anthropic_health_check_uses_correct_model(self):
+        """Test that Anthropic health check uses the correct model."""
+        provider = AnthropicProvider(api_key="test-key")
+
+        mock_response = MagicMock()
+        mock_response.content = "OK"
+
+        with patch.object(provider, "complete_async", new_callable=AsyncMock) as mock_complete:
+            mock_complete.return_value = mock_response
+            await provider.health_check()
+
+            call_args = mock_complete.call_args[0][0]
+            assert call_args.config.model == "claude-haiku-4-5-20251001"
+
+    @pytest.mark.asyncio
+    async def test_google_health_check_uses_correct_model(self):
+        """Test that Google health check uses the correct model."""
+        with patch("google.generativeai.configure"):
+            provider = GoogleProvider(api_key="test-key")
+
+            mock_response = MagicMock()
+            mock_response.content = "OK"
+
+            with patch.object(provider, "complete_async", new_callable=AsyncMock) as mock_complete:
+                mock_complete.return_value = mock_response
+                await provider.health_check()
+
+                call_args = mock_complete.call_args[0][0]
+                assert call_args.config.model == "gemini-2.5-flash"

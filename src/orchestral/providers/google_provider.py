@@ -43,6 +43,7 @@ class GoogleProvider(BaseProvider):
     """
 
     provider = ModelProvider.GOOGLE
+    _health_check_model = "gemini-2.5-flash"  # Fast/cheap model for health checks
 
     # Approximate tokens per character for Gemini
     CHARS_PER_TOKEN = 4
@@ -284,25 +285,3 @@ class GoogleProvider(BaseProvider):
             total += self.count_tokens(content, model)
             total += 4  # Message overhead
         return total
-
-    async def health_check(self) -> bool:
-        """
-        Check if the Google provider is available and configured correctly.
-
-        Returns:
-            True if healthy, False otherwise
-        """
-        try:
-            # Use Gemini Flash for health checks (fastest/cheapest)
-            test_request = CompletionRequest(
-                messages=[Message.user("Say 'OK'")],
-                config=ModelConfig(
-                    model="gemini-2.5-flash",
-                    max_tokens=10,
-                    temperature=0,
-                ),
-            )
-            response = await self.complete_async(test_request)
-            return response is not None and len(response.content) > 0
-        except Exception:
-            return False
