@@ -4,7 +4,7 @@
 
 ## Features
 
-- **Multi-Model Support**: Seamlessly integrate ChatGPT 5.1, Claude Opus 4.5, and Gemini 3 Ultra
+- **Multi-Model Support**: Seamlessly integrate GPT-5.1, Claude Opus 4.5, and Gemini 3 Pro
 - **Parallel Comparison**: Query multiple models simultaneously and compare responses
 - **Intelligent Routing**: Automatically route requests to the best model for each task
 - **MCP Integration**: Model Context Protocol support for Claude Code integration
@@ -145,9 +145,9 @@ curl -X POST http://localhost:8000/v1/route \
 ### Google
 | Model | Tier | Context | Strengths |
 |-------|------|---------|-----------|
-| Gemini 3 Ultra | Flagship | 1M | Best multimodal |
-| Gemini 3 Pro | Standard | 1M | Long context |
-| Gemini 3 Flash | Fast | 1M | Speed-optimized |
+| Gemini 3 Pro Preview | Flagship | 1M | Best multimodal |
+| Gemini 2.5 Pro | Standard | 1M | Long context |
+| Gemini 2.5 Flash | Fast | 1M | Speed-optimized |
 
 ## Routing Strategies
 
