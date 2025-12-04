@@ -108,6 +108,10 @@ class CommercialRateLimitMiddleware(BaseHTTPMiddleware):
         # Get API key from header
         api_key_header = request.headers.get("x-api-key", "")
 
+        # Skip if rate limiter not initialized
+        if not rate_limiter:
+            return await call_next(request)
+
         if settings.server.rate_limit_by_key and api_key_header and api_key_manager:
             # Rate limit by API key
             api_key = api_key_manager.validate_key(api_key_header)
@@ -181,7 +185,13 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
     # Initialize services
     orchestrator = Orchestrator()
-    api_key_manager = APIKeyManager(redis_client=redis)
+
+    # Get secret key from config if available
+    secret_key = None
+    if settings.billing.api_key_secret:
+        secret_key = bytes.fromhex(settings.billing.api_key_secret.get_secret_value())
+
+    api_key_manager = APIKeyManager(redis_client=redis, secret_key=secret_key)
     rate_limiter = RateLimiter(
         redis_client=redis,
         default_limit=settings.server.rate_limit_requests,
@@ -590,13 +600,15 @@ async def simple_completion(
     await check_budget(api_key)
     request_id = f"req-{uuid.uuid4().hex[:16]}"
 
-    # Try cache first
+    # Try cache first (tenant-isolated)
+    tenant_id = api_key.key_id if api_key else None
     if request.use_cache and response_cache:
         cached = await response_cache.get(
             request.prompt,
             request.model,
             request.temperature,
             request.max_tokens,
+            tenant_id=tenant_id,
         )
         if cached:
             cost_saved = usage_tracker.calculate_cost(
@@ -630,7 +642,7 @@ async def simple_completion(
             response.usage.output_tokens,
         ) if usage_tracker else 0.0
 
-        # Cache the response
+        # Cache the response (tenant-isolated)
         if request.use_cache and response_cache:
             await response_cache.set(
                 request.prompt,
@@ -646,6 +658,7 @@ async def simple_completion(
                 request.temperature,
                 request.max_tokens,
                 cost_usd=cost_usd,
+                tenant_id=tenant_id,
             )
 
         # Record usage

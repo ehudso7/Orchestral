@@ -303,29 +303,18 @@ class UsageTracker:
         date_key = date.strftime("%Y-%m-%d")
         full_key = f"{key_id}:{date_key}"
 
-        if self._redis:
-            key = f"{self.DAILY_PREFIX}{full_key}"
-            data = self._redis.get(key)
-            if data:
-                summary_data = json.loads(data)
-                return UsageSummary(
-                    key_id=key_id,
-                    period_start=datetime.fromisoformat(summary_data["period_start"]),
-                    period_end=datetime.fromisoformat(summary_data["period_end"]),
-                    total_requests=summary_data["total_requests"],
-                    successful_requests=summary_data["successful_requests"],
-                    failed_requests=summary_data["failed_requests"],
-                    total_input_tokens=summary_data["total_input_tokens"],
-                    total_output_tokens=summary_data["total_output_tokens"],
-                    total_cost_usd=summary_data["total_cost_usd"],
-                    avg_latency_ms=summary_data["avg_latency_ms"],
-                    models_used=summary_data["models_used"],
-                    providers_used=summary_data["providers_used"],
-                )
-
-        # Return empty summary if not found
+        # Calculate period bounds
         start = date.replace(hour=0, minute=0, second=0, microsecond=0)
         end = date.replace(hour=23, minute=59, second=59, microsecond=999999)
+
+        if self._redis:
+            key = f"{self.DAILY_PREFIX}{full_key}"
+            # Use hgetall since we store with hincrby/hincrbyfloat
+            data = self._redis.hgetall(key)
+            if data:
+                return self._parse_redis_aggregate(key_id, data, start, end)
+
+        # Return from local or empty
         return self._local_daily.get(full_key, UsageSummary(
             key_id=key_id,
             period_start=start,
@@ -355,37 +344,90 @@ class UsageTracker:
         month_key = f"{year:04d}-{month:02d}"
         full_key = f"{key_id}:{month_key}"
 
-        if self._redis:
-            key = f"{self.MONTHLY_PREFIX}{full_key}"
-            data = self._redis.get(key)
-            if data:
-                summary_data = json.loads(data)
-                return UsageSummary(
-                    key_id=key_id,
-                    period_start=datetime.fromisoformat(summary_data["period_start"]),
-                    period_end=datetime.fromisoformat(summary_data["period_end"]),
-                    total_requests=summary_data["total_requests"],
-                    successful_requests=summary_data["successful_requests"],
-                    failed_requests=summary_data["failed_requests"],
-                    total_input_tokens=summary_data["total_input_tokens"],
-                    total_output_tokens=summary_data["total_output_tokens"],
-                    total_cost_usd=summary_data["total_cost_usd"],
-                    avg_latency_ms=summary_data["avg_latency_ms"],
-                    models_used=summary_data["models_used"],
-                    providers_used=summary_data["providers_used"],
-                )
-
-        # Return from local or empty
+        # Calculate period bounds
         from calendar import monthrange
         start = datetime(year, month, 1, tzinfo=timezone.utc)
         last_day = monthrange(year, month)[1]
         end = datetime(year, month, last_day, 23, 59, 59, tzinfo=timezone.utc)
 
+        if self._redis:
+            key = f"{self.MONTHLY_PREFIX}{full_key}"
+            # Use hgetall since we store with hincrby/hincrbyfloat
+            data = self._redis.hgetall(key)
+            if data:
+                return self._parse_redis_aggregate(key_id, data, start, end)
+
+        # Return from local or empty
         return self._local_monthly.get(full_key, UsageSummary(
             key_id=key_id,
             period_start=start,
             period_end=end,
         ))
+
+    def _parse_redis_aggregate(
+        self,
+        key_id: str,
+        data: dict[bytes | str, bytes | str],
+        period_start: datetime,
+        period_end: datetime,
+    ) -> UsageSummary:
+        """
+        Parse Redis hash aggregate data into UsageSummary.
+
+        Args:
+            key_id: API key ID
+            data: Raw Redis hash data
+            period_start: Start of the period
+            period_end: End of the period
+
+        Returns:
+            UsageSummary with parsed data
+        """
+        # Helper to decode bytes and convert to proper types
+        def get_int(key: str) -> int:
+            val = data.get(key) or data.get(key.encode(), 0)
+            if isinstance(val, bytes):
+                val = val.decode()
+            return int(val) if val else 0
+
+        def get_float(key: str) -> float:
+            val = data.get(key) or data.get(key.encode(), 0.0)
+            if isinstance(val, bytes):
+                val = val.decode()
+            return float(val) if val else 0.0
+
+        # Extract models and providers from prefixed keys
+        models_used: dict[str, int] = {}
+        providers_used: dict[str, int] = {}
+
+        for k, v in data.items():
+            key_str = k.decode() if isinstance(k, bytes) else k
+            val_str = v.decode() if isinstance(v, bytes) else v
+
+            if key_str.startswith("model:"):
+                model_name = key_str[6:]  # Remove "model:" prefix
+                models_used[model_name] = int(val_str)
+            elif key_str.startswith("provider:"):
+                provider_name = key_str[9:]  # Remove "provider:" prefix
+                providers_used[provider_name] = int(val_str)
+
+        total_requests = get_int("total_requests")
+        total_latency = get_float("total_latency_ms")
+
+        return UsageSummary(
+            key_id=key_id,
+            period_start=period_start,
+            period_end=period_end,
+            total_requests=total_requests,
+            successful_requests=get_int("successful_requests"),
+            failed_requests=get_int("failed_requests"),
+            total_input_tokens=get_int("total_input_tokens"),
+            total_output_tokens=get_int("total_output_tokens"),
+            total_cost_usd=get_float("total_cost_usd"),
+            avg_latency_ms=total_latency / total_requests if total_requests > 0 else 0.0,
+            models_used=models_used,
+            providers_used=providers_used,
+        )
 
     async def check_budget(
         self,

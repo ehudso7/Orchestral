@@ -132,6 +132,7 @@ class ResponseCache:
         model: str,
         temperature: float,
         max_tokens: int,
+        tenant_id: str | None = None,
     ) -> str:
         """
         Generate a cache key for a request.
@@ -141,6 +142,7 @@ class ResponseCache:
             model: Model ID
             temperature: Temperature setting
             max_tokens: Max tokens setting
+            tenant_id: API key ID for tenant isolation (prevents cross-tenant leaks)
 
         Returns:
             Cache key string
@@ -161,10 +163,12 @@ class ResponseCache:
             # Don't cache high-temperature requests (non-deterministic)
             return ""
 
-        key_data = f"{model}:{temperature}:{max_tokens}:{prompt_str}"
+        # Include tenant_id in cache key to prevent cross-tenant cache leaks
+        tenant_prefix = tenant_id or "global"
+        key_data = f"{tenant_prefix}:{model}:{temperature}:{max_tokens}:{prompt_str}"
         prompt_hash = hashlib.sha256(key_data.encode()).hexdigest()[:32]
 
-        return f"{model}:{prompt_hash}"
+        return f"{tenant_prefix}:{model}:{prompt_hash}"
 
     async def get(
         self,
@@ -172,6 +176,7 @@ class ResponseCache:
         model: str,
         temperature: float = 0.0,
         max_tokens: int = 4096,
+        tenant_id: str | None = None,
     ) -> CacheEntry | None:
         """
         Get a cached response if available.
@@ -181,6 +186,7 @@ class ResponseCache:
             model: Model ID
             temperature: Temperature setting
             max_tokens: Max tokens setting
+            tenant_id: API key ID for tenant isolation
 
         Returns:
             CacheEntry if found, None otherwise
@@ -188,7 +194,7 @@ class ResponseCache:
         if not self._enabled:
             return None
 
-        cache_key = self._generate_cache_key(messages, model, temperature, max_tokens)
+        cache_key = self._generate_cache_key(messages, model, temperature, max_tokens, tenant_id)
         if not cache_key:
             return None
 
@@ -230,6 +236,7 @@ class ResponseCache:
         max_tokens: int = 4096,
         ttl_seconds: int | None = None,
         cost_usd: float = 0.0,
+        tenant_id: str | None = None,
     ) -> CacheEntry | None:
         """
         Cache a response.
@@ -243,6 +250,7 @@ class ResponseCache:
             max_tokens: Max tokens setting
             ttl_seconds: Custom TTL (uses default if None)
             cost_usd: Cost of this request (for savings calculation)
+            tenant_id: API key ID for tenant isolation
 
         Returns:
             CacheEntry if cached, None if not cacheable
@@ -250,7 +258,7 @@ class ResponseCache:
         if not self._enabled:
             return None
 
-        cache_key = self._generate_cache_key(messages, model, temperature, max_tokens)
+        cache_key = self._generate_cache_key(messages, model, temperature, max_tokens, tenant_id)
         if not cache_key:
             return None
 
@@ -366,6 +374,10 @@ class ResponseCache:
 
         if self._redis:
             ttl = int((entry.expires_at - datetime.now(timezone.utc)).total_seconds())
+            # Guard against negative or zero TTL (entry already expired)
+            if ttl <= 0:
+                logger.debug("Skipping cache store for expired entry", cache_key=entry.cache_key)
+                return
             self._redis.setex(full_key, ttl, json.dumps(entry.to_dict()))
         else:
             self._local_cache[entry.cache_key] = entry

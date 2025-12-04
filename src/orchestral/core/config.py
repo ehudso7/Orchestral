@@ -158,6 +158,13 @@ class BillingSettings(BaseSettings):
     usage_tracking_enabled: bool = True
     budget_alerts_enabled: bool = True
 
+    # API Key Management - CRITICAL: This secret must be persistent across restarts
+    # Generate once with: python -c "import secrets; print(secrets.token_hex(32))"
+    api_key_secret: SecretStr | None = Field(
+        default=None,
+        description="Secret key for API key hashing. Must be persistent across restarts!"
+    )
+
     # Caching
     cache_enabled: bool = True
     cache_ttl_seconds: int = 3600

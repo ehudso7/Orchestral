@@ -176,17 +176,63 @@ class APIKeyManager:
 
     KEY_PREFIX = "orch:apikey:"
     LOOKUP_PREFIX = "orch:keylookup:"
+    SECRET_KEY_REDIS_KEY = "orch:config:api_key_secret"
 
-    def __init__(self, redis_client: Any | None = None):
+    def __init__(
+        self,
+        redis_client: Any | None = None,
+        secret_key: bytes | None = None,
+    ):
         """
         Initialize the API key manager.
 
         Args:
             redis_client: Redis client for persistence (optional for in-memory mode)
+            secret_key: Pre-configured secret key (from settings). If not provided,
+                       will try to load from Redis or generate and persist one.
         """
         self._redis = redis_client
         self._local_cache: dict[str, APIKey] = {}
-        self._secret_key = secrets.token_bytes(32)
+        self._secret_key = self._initialize_secret_key(secret_key)
+
+    def _initialize_secret_key(self, provided_secret: bytes | None) -> bytes:
+        """
+        Initialize the secret key for API key hashing.
+
+        Priority:
+        1. Use provided secret from config (recommended for production)
+        2. Load from Redis if available (for persistence across restarts)
+        3. Generate new key and store in Redis (auto-setup)
+        4. Generate new key for in-memory only (dev mode warning)
+        """
+        # 1. Use provided secret if available (from environment config)
+        if provided_secret:
+            logger.info("Using configured API key secret")
+            return provided_secret
+
+        # 2. Try to load from Redis
+        if self._redis:
+            try:
+                stored_secret = self._redis.get(self.SECRET_KEY_REDIS_KEY)
+                if stored_secret:
+                    logger.info("Loaded API key secret from Redis")
+                    return stored_secret if isinstance(stored_secret, bytes) else stored_secret.encode()
+
+                # 3. Generate and persist to Redis
+                new_secret = secrets.token_bytes(32)
+                self._redis.set(self.SECRET_KEY_REDIS_KEY, new_secret)
+                logger.info("Generated and persisted new API key secret to Redis")
+                return new_secret
+            except Exception as e:
+                logger.warning("Failed to use Redis for secret key storage", error=str(e))
+
+        # 4. Fallback to in-memory (warns user)
+        logger.warning(
+            "API key secret not configured and Redis unavailable. "
+            "Keys will be invalidated on restart! "
+            "Set ORCHESTRAL_BILLING_API_KEY_SECRET for production."
+        )
+        return secrets.token_bytes(32)
 
     def generate_key(
         self,
@@ -258,10 +304,16 @@ class APIKeyManager:
         Returns:
             APIKey if valid, None otherwise
         """
-        if not raw_key or "_" not in raw_key:
+        if not raw_key or not raw_key.startswith("orch_"):
             return None
 
-        key_id = raw_key.split("_")[0] + "_" + raw_key.split("_")[1]
+        # Key format: orch_<16 hex chars>_<token>
+        # Extract key_id as fixed prefix "orch_" + next 16 chars
+        # This is more robust than splitting on "_" since token_urlsafe can contain "_"
+        if len(raw_key) < 22:  # "orch_" (5) + hex (16) + "_" (1) = 22 minimum
+            return None
+
+        key_id = raw_key[:21]  # "orch_" + 16 hex chars
         key_hash = self._hash_key(raw_key)
 
         # Try to get the key
@@ -364,16 +416,26 @@ class APIKeyManager:
             List of API keys
         """
         if self._redis:
+            import json
             keys = []
             pattern = f"{self.KEY_PREFIX}*"
             for key in self._redis.scan_iter(pattern):
-                data = self._redis.hgetall(key)
+                # Skip the secret key config entry
+                if key == self.SECRET_KEY_REDIS_KEY or (
+                    isinstance(key, bytes) and key.decode() == self.SECRET_KEY_REDIS_KEY
+                ):
+                    continue
+                data = self._redis.get(key)
                 if data:
-                    api_key = APIKey.from_dict(
-                        {k.decode(): v.decode() if isinstance(v, bytes) else v for k, v in data.items()}
-                    )
-                    if owner_id is None or api_key.owner_id == owner_id:
-                        keys.append(api_key)
+                    try:
+                        # Handle bytes from Redis
+                        if isinstance(data, bytes):
+                            data = data.decode()
+                        api_key = APIKey.from_dict(json.loads(data))
+                        if owner_id is None or api_key.owner_id == owner_id:
+                            keys.append(api_key)
+                    except (json.JSONDecodeError, KeyError) as e:
+                        logger.warning("Failed to parse API key data", key=key, error=str(e))
             return keys
         else:
             return [
