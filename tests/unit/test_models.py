@@ -129,18 +129,19 @@ class TestModelRegistry:
         assert "claude-sonnet-4-5-20250929" in MODEL_REGISTRY
 
     def test_google_models_exist(self):
-        assert "gemini-3-ultra" in MODEL_REGISTRY
         assert "gemini-3-pro-preview" in MODEL_REGISTRY
+        assert "gemini-2.5-pro" in MODEL_REGISTRY
+        assert "gemini-2.5-flash" in MODEL_REGISTRY
 
     def test_model_spec_properties(self):
         spec = MODEL_REGISTRY["gpt-5.1"]
         assert spec.provider == ModelProvider.OPENAI
         assert spec.tier == ModelTier.FLAGSHIP
-        assert spec.context_window == 272_000
+        assert spec.context_window == 400_000
         assert spec.supports_vision is True
 
     def test_gemini_multimodal_support(self):
-        spec = MODEL_REGISTRY["gemini-3-ultra"]
+        spec = MODEL_REGISTRY["gemini-3-pro-preview"]
         assert spec.supports_vision is True
         assert spec.supports_audio is True
         assert spec.supports_video is True

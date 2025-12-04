@@ -244,7 +244,7 @@ class TestTaskRecommendations:
     def test_multimodal_recommendations(self):
         recommendations = TASK_MODEL_RECOMMENDATIONS[TaskCategory.MULTIMODAL]
         # Gemini should be first for multimodal
-        assert "gemini-3-ultra" in recommendations
+        assert "gemini-3-pro-preview" in recommendations
 
     def test_get_best_model_for_task(self):
         orch = Orchestrator(

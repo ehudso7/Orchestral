@@ -8,14 +8,17 @@ from __future__ import annotations
 
 import secrets
 import time
+from collections import defaultdict
 from contextlib import asynccontextmanager
+from threading import Lock
 from typing import Any, AsyncIterator
 
 from fastapi import FastAPI, HTTPException, Depends, Header, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, JSONResponse
 from pydantic import BaseModel, Field
 from sse_starlette.sse import EventSourceResponse
+from starlette.middleware.base import BaseHTTPMiddleware
 import structlog
 
 from orchestral.core.orchestrator import Orchestrator
@@ -40,6 +43,67 @@ logger = structlog.get_logger()
 orchestrator: Orchestrator | None = None
 
 
+class RateLimitMiddleware(BaseHTTPMiddleware):
+    """
+    Simple in-memory rate limiting middleware.
+
+    Limits requests per IP address within a time window.
+    For production, consider using Redis-based rate limiting.
+    """
+
+    def __init__(self, app: FastAPI, requests_limit: int = 100, window_seconds: int = 60):
+        super().__init__(app)
+        self.requests_limit = requests_limit
+        self.window_seconds = window_seconds
+        self._requests: dict[str, list[float]] = defaultdict(list)
+        self._lock = Lock()
+
+    def _get_client_ip(self, request: Request) -> str:
+        """Extract client IP from request."""
+        # Check for forwarded headers (for reverse proxy setups)
+        forwarded = request.headers.get("x-forwarded-for")
+        if forwarded:
+            return forwarded.split(",")[0].strip()
+        return request.client.host if request.client else "unknown"
+
+    def _is_rate_limited(self, client_ip: str) -> bool:
+        """Check if client is rate limited."""
+        now = time.time()
+        window_start = now - self.window_seconds
+
+        with self._lock:
+            # Clean old requests
+            self._requests[client_ip] = [
+                ts for ts in self._requests[client_ip] if ts > window_start
+            ]
+
+            # Check limit
+            if len(self._requests[client_ip]) >= self.requests_limit:
+                return True
+
+            # Record this request
+            self._requests[client_ip].append(now)
+            return False
+
+    async def dispatch(self, request: Request, call_next):
+        """Process request with rate limiting."""
+        # Skip rate limiting for health checks
+        if request.url.path in ["/", "/health", "/docs", "/redoc", "/openapi.json"]:
+            return await call_next(request)
+
+        client_ip = self._get_client_ip(request)
+
+        if self._is_rate_limited(client_ip):
+            logger.warning("Rate limit exceeded", client_ip=client_ip)
+            return JSONResponse(
+                status_code=429,
+                content={"detail": "Rate limit exceeded. Please try again later."},
+                headers={"Retry-After": str(self.window_seconds)},
+            )
+
+        return await call_next(request)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     """Application lifespan handler."""
@@ -62,6 +126,13 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
         docs_url="/docs",
         redoc_url="/redoc",
+    )
+
+    # Rate limiting middleware (applied first, so it runs last)
+    app.add_middleware(
+        RateLimitMiddleware,
+        requests_limit=settings.server.rate_limit_requests,
+        window_seconds=settings.server.rate_limit_window_seconds,
     )
 
     # CORS middleware
@@ -492,8 +563,10 @@ async def recommend_model(
 
 
 @app.get("/metrics")
-async def get_metrics() -> dict[str, Any]:
-    """Get application metrics."""
+async def get_metrics(
+    _: bool = Depends(verify_api_key),
+) -> dict[str, Any]:
+    """Get application metrics. Requires authentication."""
     return metrics.get_summary()
 
 
