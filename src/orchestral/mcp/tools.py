@@ -80,7 +80,7 @@ OrchestraTool = ToolDefinition(
             enum=[
                 "gpt-5.1", "gpt-4o", "gpt-4o-mini",
                 "claude-opus-4-5-20251101", "claude-sonnet-4-5-20250929", "claude-haiku-4-5-20251001",
-                "gemini-3-ultra", "gemini-3-pro-preview", "gemini-3-flash",
+                "gemini-3-pro-preview", "gemini-2.5-pro", "gemini-2.5-flash",
             ],
             default="gpt-4o",
         ),
