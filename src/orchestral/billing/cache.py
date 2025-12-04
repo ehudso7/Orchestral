@@ -313,7 +313,13 @@ class ResponseCache:
 
         if self._redis:
             loop = asyncio.get_event_loop()
-            pattern = f"{self.CACHE_PREFIX}{model or '*'}:*"
+            # Cache key format is: tenant_id:model:hash
+            # For model-specific invalidation, match *:model:*
+            # For all models, match *
+            if model:
+                pattern = f"{self.CACHE_PREFIX}*:{model}:*"
+            else:
+                pattern = f"{self.CACHE_PREFIX}*"
 
             # Collect keys first (in executor to avoid blocking)
             keys_to_check = await loop.run_in_executor(
@@ -334,8 +340,12 @@ class ResponseCache:
         else:
             keys_to_delete = []
             for key, entry in self._local_cache.items():
-                if model and not key.startswith(model):
-                    continue
+                # Cache key format is: tenant_id:model:hash
+                # Check if model matches the second component
+                if model:
+                    parts = key.split(":")
+                    if len(parts) < 2 or parts[1] != model:
+                        continue
                 if older_than and entry.created_at >= older_than:
                     continue
                 keys_to_delete.append(key)
@@ -347,14 +357,18 @@ class ResponseCache:
         logger.info("Cache invalidated", entries=count, model=model)
         return count
 
-    def get_stats(self) -> CacheStats:
-        """Get cache statistics (sync for simplicity)."""
+    async def get_stats(self) -> CacheStats:
+        """Get cache statistics."""
         if self._redis:
-            # Use a simple counter instead of loading all keys
-            count = 0
-            for _ in self._redis.scan_iter(f"{self.CACHE_PREFIX}*"):
-                count += 1
-            self._stats.cache_size = count
+            loop = asyncio.get_event_loop()
+
+            def _count_keys():
+                count = 0
+                for _ in self._redis.scan_iter(f"{self.CACHE_PREFIX}*"):
+                    count += 1
+                return count
+
+            self._stats.cache_size = await loop.run_in_executor(None, _count_keys)
         else:
             self._stats.cache_size = len(self._local_cache)
 
