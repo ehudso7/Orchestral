@@ -139,8 +139,15 @@ class RedisSettings(BaseSettings):
 
     @property
     def is_configured(self) -> bool:
-        """Check if Redis is configured."""
-        return self.url is not None or self.host != "localhost"
+        """Check if Redis is explicitly configured (vs defaults)."""
+        # Consider configured if URL is set, password provided, or non-default host/port/db
+        return (
+            self.url is not None
+            or self.password is not None
+            or self.host != "localhost"
+            or self.port != 6379
+            or self.db != 0
+        )
 
 
 class BillingSettings(BaseSettings):

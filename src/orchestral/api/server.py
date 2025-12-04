@@ -13,7 +13,7 @@ import uuid
 from contextlib import asynccontextmanager
 from typing import Any, AsyncIterator
 
-from fastapi import FastAPI, HTTPException, Depends, Header, Request
+from fastapi import FastAPI, HTTPException, Depends, Header, Request, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
@@ -410,19 +410,15 @@ async def check_budget(api_key: APIKey | None) -> None:
     if not settings.billing.hard_budget_limit:
         return
 
-    within_budget, current_spend, remaining = await usage_tracker.check_budget(
+    within_budget, current_spend, _remaining = await usage_tracker.check_budget(
         api_key.key_id,
         api_key.effective_monthly_budget,
     )
 
     if not within_budget:
         raise HTTPException(
-            status_code=402,
-            detail={
-                "error": "Monthly budget exceeded",
-                "current_spend_usd": current_spend,
-                "budget_usd": api_key.effective_monthly_budget,
-            },
+            status_code=429,
+            detail=f"Monthly budget exceeded: ${current_spend:.2f} of ${api_key.effective_monthly_budget:.2f} used",
         )
 
 
@@ -611,8 +607,12 @@ async def simple_completion(
             tenant_id=tenant_id,
         )
         if cached:
+            # Use actual token counts from cache for accurate cost savings
+            usage_data = cached.response_data.get("usage", {})
             cost_saved = usage_tracker.calculate_cost(
-                request.model, 100, len(cached.response_content) // 4
+                request.model,
+                usage_data.get("input_tokens", 100),  # Fallback for old entries
+                usage_data.get("output_tokens", len(cached.response_content) // 4),
             ) if usage_tracker else 0.0
             await response_cache.record_cost_saved(cost_saved)
 
@@ -621,8 +621,8 @@ async def simple_completion(
                 model=request.model,
                 provider=cached.response_data.get("provider", "cached"),
                 content=cached.response_content,
-                finish_reason="cached",
-                usage=cached.response_data.get("usage", {}),
+                finish_reason=cached.response_data.get("finish_reason", "stop"),
+                usage=usage_data,
                 latency_ms=0,
                 cached=True,
                 cost_usd=0.0,
@@ -650,6 +650,7 @@ async def simple_completion(
                 response.content,
                 {
                     "provider": response.provider.value,
+                    "finish_reason": response.finish_reason,
                     "usage": {
                         "input_tokens": response.usage.input_tokens,
                         "output_tokens": response.usage.output_tokens,
@@ -814,7 +815,7 @@ async def route_request(
 async def recommend_model(
     task: str,
     orch: Orchestrator = Depends(get_orchestrator),
-    api_key: APIKey | None = Depends(verify_api_key),
+    _api_key: APIKey | None = Depends(verify_api_key),  # Auth required but key not used
 ) -> dict[str, Any]:
     """Get model recommendation for a task category."""
     category_map = {
@@ -886,7 +887,7 @@ async def get_usage(
 
 @app.get("/v1/usage/history")
 async def get_usage_history(
-    limit: int = 100,
+    limit: int = Query(default=100, ge=1, le=1000, description="Max records to return"),
     api_key: APIKey | None = Depends(verify_api_key),
 ) -> dict[str, Any]:
     """Get recent usage history."""
@@ -939,6 +940,7 @@ async def create_api_key(
 
     return {
         "key": raw_key,  # Only returned once!
+        "warning": "This is the only time the API key will be displayed. Copy and store it securely.",
         "key_id": api_key.key_id,
         "name": api_key.name,
         "tier": api_key.tier.value,
@@ -1020,7 +1022,7 @@ async def list_tiers(
 
 @app.get("/metrics")
 async def get_metrics(
-    api_key: APIKey | None = Depends(verify_api_key),
+    _api_key: APIKey | None = Depends(verify_api_key),  # Auth required but key not used
 ) -> dict[str, Any]:
     """Get application metrics."""
     summary = metrics.get_summary()
