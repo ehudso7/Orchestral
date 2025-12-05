@@ -2,7 +2,7 @@
 FastAPI server for Orchestral.
 
 Provides REST API endpoints for multi-model AI orchestration with
-commercial-grade billing, rate limiting, and usage tracking.
+commercial-grade billing, rate limiting, usage tracking, and enterprise features.
 """
 
 from __future__ import annotations
@@ -39,6 +39,17 @@ from orchestral.billing.rate_limiter import RateLimiter
 from orchestral.billing.usage import UsageTracker
 from orchestral.billing.cache import ResponseCache
 
+# Enterprise features
+from orchestral.billing.semantic_cache import SemanticCache
+from orchestral.observability.tracing import configure_tracer, RedisTraceExporter, ConsoleTraceExporter
+from orchestral.observability.events import configure_event_emitter
+from orchestral.observability.audit import configure_audit_logger
+from orchestral.prompts.manager import configure_prompt_manager
+from orchestral.prompts.ab_testing import configure_ab_manager
+from orchestral.optimization.router import configure_smart_router
+from orchestral.safety.guardrails import configure_guardrail_pipeline
+from orchestral.evaluation.evaluator import configure_evaluation_pipeline
+
 logger = structlog.get_logger()
 
 # Global instances
@@ -47,6 +58,7 @@ api_key_manager: APIKeyManager | None = None
 rate_limiter: RateLimiter | None = None
 usage_tracker: UsageTracker | None = None
 response_cache: ResponseCache | None = None
+semantic_cache: SemanticCache | None = None
 redis_client: Any = None
 
 
@@ -175,15 +187,15 @@ class CommercialRateLimitMiddleware(BaseHTTPMiddleware):
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     """Application lifespan handler."""
-    global orchestrator, api_key_manager, rate_limiter, usage_tracker, response_cache
+    global orchestrator, api_key_manager, rate_limiter, usage_tracker, response_cache, semantic_cache
 
     setup_logging()
-    logger.info("Starting Orchestral API server (Commercial Edition)")
+    logger.info("Starting Orchestral API server (Enterprise Edition)")
 
     settings = get_settings()
     redis = get_redis_client()
 
-    # Initialize services
+    # Initialize core services
     orchestrator = Orchestrator()
 
     # Get secret key from config if available
@@ -205,10 +217,70 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         enabled=settings.billing.cache_enabled,
     )
 
+    # Initialize enterprise services
+    semantic_cache = SemanticCache(
+        redis_client=redis,
+        default_ttl_seconds=settings.billing.cache_ttl_seconds,
+        enabled=settings.billing.cache_enabled,
+    )
+
+    # Configure enterprise modules with Redis
+    exporters = [ConsoleTraceExporter()]
+    if redis:
+        exporters.append(RedisTraceExporter(redis))
+
+    configure_tracer(
+        service_name="orchestral",
+        exporters=exporters,
+        enabled=True,
+        sample_rate=1.0,
+    )
+
+    configure_event_emitter(
+        redis_client=redis,
+        enabled=True,
+    )
+
+    configure_audit_logger(
+        redis_client=redis,
+        retention_days=90,
+        enabled=True,
+    )
+
+    configure_prompt_manager(
+        redis_client=redis,
+        enabled=True,
+    )
+
+    configure_ab_manager(
+        redis_client=redis,
+        enabled=True,
+    )
+
+    configure_smart_router(
+        redis_client=redis,
+        available_models=list(MODEL_REGISTRY.keys()),
+        enabled=True,
+    )
+
+    configure_guardrail_pipeline(enabled=True)
+    configure_evaluation_pipeline(enabled=True)
+
     logger.info(
-        "Commercial services initialized",
+        "Enterprise services initialized",
         redis_connected=redis is not None,
         cache_enabled=settings.billing.cache_enabled,
+        features=[
+            "semantic_caching",
+            "distributed_tracing",
+            "event_streaming",
+            "audit_logging",
+            "prompt_management",
+            "ab_testing",
+            "smart_routing",
+            "guardrails",
+            "evaluation",
+        ],
     )
 
     yield
@@ -222,8 +294,8 @@ def create_app() -> FastAPI:
 
     app = FastAPI(
         title="Orchestral API",
-        description="Commercial Multi-Model AI Orchestration Platform",
-        version="2.0.0",
+        description="Enterprise Multi-Model AI Orchestration Platform with Semantic Caching, Smart Routing, Guardrails, A/B Testing, and Observability",
+        version="3.0.0",
         lifespan=lifespan,
         docs_url="/docs",
         redoc_url="/redoc",
@@ -240,6 +312,10 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    # Include enterprise router
+    from orchestral.api.enterprise import enterprise_router
+    app.include_router(enterprise_router)
 
     return app
 
