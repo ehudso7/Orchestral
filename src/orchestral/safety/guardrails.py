@@ -201,7 +201,8 @@ class PIIDetector(Guardrail):
     PII_PATTERNS = {
         "email": r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b",
         "phone": r"\b(?:\+?1[-.]?)?\(?[0-9]{3}\)?[-.]?[0-9]{3}[-.]?[0-9]{4}\b",
-        "ssn": r"\b\d{3}[-]?\d{2}[-]?\d{4}\b",
+        # More restrictive SSN pattern requiring dashes to reduce false positives
+        "ssn": r"\b\d{3}-\d{2}-\d{4}\b",
         "credit_card": r"\b(?:\d{4}[-\s]?){3}\d{4}\b",
         "ip_address": r"\b(?:\d{1,3}\.){3}\d{1,3}\b",
         "date_of_birth": r"\b(?:0?[1-9]|1[0-2])[/-](?:0?[1-9]|[12]\d|3[01])[/-](?:19|20)\d{2}\b",
@@ -363,7 +364,8 @@ class PromptInjectionDetector(Guardrail):
         # Calculate confidence based on number of patterns matched
         confidence = matched_patterns / total_patterns if total_patterns > 0 else 0
 
-        if confidence >= self.sensitivity or matched_patterns > 0:
+        # Only trigger if confidence meets sensitivity threshold (sensitivity setting now works as intended)
+        if confidence >= self.sensitivity:
             return GuardrailResult(
                 passed=False,
                 action=self.default_action,

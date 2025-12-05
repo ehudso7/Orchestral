@@ -578,8 +578,16 @@ class ABTestingManager:
         ):
             result = await self.analyze_experiment(experiment_id)
             if result.confidence >= experiment.confidence_threshold:
-                await self.stop_experiment(experiment_id, analyze=False)
+                # Update experiment status and result atomically to avoid race condition
+                experiment.status = ExperimentStatus.COMPLETED
+                experiment.ended_at = datetime.now(timezone.utc)
                 experiment.result = result
+                await self._store_experiment(experiment)
+                logger.info(
+                    "Experiment auto-completed",
+                    experiment_id=experiment_id,
+                    winner=result.winner,
+                )
 
     async def analyze_experiment(
         self,
@@ -710,7 +718,10 @@ class ABTestingManager:
                 keys = await loop.run_in_executor(
                     None, lambda: list(self._redis.scan_iter(pattern, count=1000))
                 )
-                for key in keys[:limit]:
+                # Filter first, then apply limit to avoid returning fewer results than expected
+                for key in keys:
+                    if len(experiments) >= limit:
+                        break
                     data = await loop.run_in_executor(None, self._redis.get, key)
                     if data:
                         exp = Experiment.from_dict(json.loads(data))

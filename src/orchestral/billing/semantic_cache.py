@@ -11,6 +11,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import json
+from collections import deque
 import numpy as np
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -228,7 +229,8 @@ class SemanticCache:
         self._local_cache: dict[str, SemanticCacheEntry] = {}
         self._local_embeddings: list[tuple[str, list[float]]] = []
         self._stats = SemanticCacheStats()
-        self._similarity_scores: list[float] = []
+        # Bounded deque to prevent memory leak - stores last 10000 similarity scores
+        self._similarity_scores: deque[float] = deque(maxlen=10000)
 
     async def get(
         self,

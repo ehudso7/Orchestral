@@ -17,10 +17,29 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Depends, Query
+from fastapi import APIRouter, HTTPException, Depends, Query, Header
 from pydantic import BaseModel, Field
 
-from orchestral.billing.api_keys import APIKey
+from orchestral.billing.api_keys import APIKey, get_api_key_manager
+
+
+async def get_current_api_key(
+    x_api_key: str | None = Header(None, alias="X-API-Key"),
+) -> APIKey | None:
+    """
+    Extract and validate API key from request header.
+
+    Returns None if no key provided (allows global tenant fallback).
+    In production, this should be stricter.
+    """
+    if not x_api_key:
+        return None
+
+    manager = get_api_key_manager()
+    api_key = await manager.validate_key(x_api_key)
+    if not api_key:
+        raise HTTPException(status_code=401, detail="Invalid API key")
+    return api_key
 from orchestral.prompts.manager import (
     Prompt,
     PromptManager,
@@ -146,7 +165,7 @@ class AuditQueryRequest(BaseModel):
 @enterprise_router.post("/prompts")
 async def create_prompt(
     request: PromptCreateRequest,
-    api_key: APIKey = Depends(lambda: None),  # Will be injected by main router
+    api_key: APIKey | None = Depends(get_current_api_key),
 ) -> dict[str, Any]:
     """Create a new managed prompt."""
     manager = get_prompt_manager()
@@ -184,7 +203,7 @@ async def create_prompt(
 async def list_prompts(
     tags: str | None = Query(None, description="Filter by tags (comma-separated)"),
     limit: int = Query(100, ge=1, le=1000),
-    api_key: APIKey = Depends(lambda: None),
+    api_key: APIKey | None = Depends(get_current_api_key),
 ) -> dict[str, Any]:
     """List prompts for the tenant."""
     manager = get_prompt_manager()
@@ -211,7 +230,7 @@ async def list_prompts(
 @enterprise_router.get("/prompts/{prompt_id}")
 async def get_prompt(
     prompt_id: str,
-    api_key: APIKey = Depends(lambda: None),
+    api_key: APIKey | None = Depends(get_current_api_key),
 ) -> dict[str, Any]:
     """Get a prompt by ID."""
     manager = get_prompt_manager()
@@ -227,7 +246,7 @@ async def get_prompt(
 async def add_prompt_version(
     prompt_id: str,
     request: PromptVersionRequest,
-    api_key: APIKey = Depends(lambda: None),
+    api_key: APIKey | None = Depends(get_current_api_key),
 ) -> dict[str, Any]:
     """Add a new version to a prompt."""
     manager = get_prompt_manager()
@@ -254,7 +273,7 @@ async def add_prompt_version(
 async def activate_prompt_version(
     prompt_id: str,
     version: int,
-    api_key: APIKey = Depends(lambda: None),
+    api_key: APIKey | None = Depends(get_current_api_key),
 ) -> dict[str, Any]:
     """Activate a specific prompt version."""
     manager = get_prompt_manager()
@@ -275,7 +294,7 @@ async def activate_prompt_version(
 @enterprise_router.post("/prompts/render")
 async def render_prompt(
     request: PromptRenderRequest,
-    api_key: APIKey = Depends(lambda: None),
+    api_key: APIKey | None = Depends(get_current_api_key),
 ) -> dict[str, Any]:
     """Render a prompt template with variables."""
     manager = get_prompt_manager()
@@ -303,7 +322,7 @@ async def render_prompt(
 @enterprise_router.post("/experiments")
 async def create_experiment(
     request: ExperimentCreateRequest,
-    api_key: APIKey = Depends(lambda: None),
+    api_key: APIKey | None = Depends(get_current_api_key),
 ) -> dict[str, Any]:
     """Create a new A/B test experiment."""
     ab_manager = get_ab_manager()
@@ -335,13 +354,21 @@ async def create_experiment(
 async def list_experiments(
     status: str | None = Query(None, description="Filter by status"),
     limit: int = Query(100, ge=1, le=1000),
-    api_key: APIKey = Depends(lambda: None),
+    api_key: APIKey | None = Depends(get_current_api_key),
 ) -> dict[str, Any]:
     """List experiments for the tenant."""
     ab_manager = get_ab_manager()
     tenant_id = api_key.key_id if api_key else "global"
 
-    exp_status = ExperimentStatus(status) if status else None
+    exp_status = None
+    if status:
+        try:
+            exp_status = ExperimentStatus(status)
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid status. Valid values: {[s.value for s in ExperimentStatus]}"
+            ) from None
     experiments = await ab_manager.list_experiments(
         tenant_id=tenant_id,
         status=exp_status,
@@ -365,7 +392,7 @@ async def list_experiments(
 @enterprise_router.post("/experiments/{experiment_id}/start")
 async def start_experiment(
     experiment_id: str,
-    api_key: APIKey = Depends(lambda: None),
+    api_key: APIKey | None = Depends(get_current_api_key),
 ) -> dict[str, Any]:
     """Start an experiment."""
     ab_manager = get_ab_manager()
@@ -385,7 +412,7 @@ async def start_experiment(
 @enterprise_router.post("/experiments/{experiment_id}/stop")
 async def stop_experiment(
     experiment_id: str,
-    api_key: APIKey = Depends(lambda: None),
+    api_key: APIKey | None = Depends(get_current_api_key),
 ) -> dict[str, Any]:
     """Stop an experiment and analyze results."""
     ab_manager = get_ab_manager()
@@ -406,7 +433,7 @@ async def stop_experiment(
 @enterprise_router.get("/experiments/{experiment_id}")
 async def get_experiment(
     experiment_id: str,
-    api_key: APIKey = Depends(lambda: None),
+    api_key: APIKey | None = Depends(get_current_api_key),
 ) -> dict[str, Any]:
     """Get experiment details."""
     ab_manager = get_ab_manager()
@@ -422,7 +449,7 @@ async def get_experiment(
 async def get_experiment_variant(
     experiment_id: str,
     user_id: str = Query(..., description="User ID for assignment"),
-    api_key: APIKey = Depends(lambda: None),
+    api_key: APIKey | None = Depends(get_current_api_key),
 ) -> dict[str, Any]:
     """Get the assigned variant for a user."""
     ab_manager = get_ab_manager()
@@ -447,7 +474,7 @@ async def get_experiment_variant(
 @enterprise_router.post("/route")
 async def smart_route(
     request: SmartRouteRequest,
-    api_key: APIKey = Depends(lambda: None),
+    api_key: APIKey | None = Depends(get_current_api_key),
 ) -> dict[str, Any]:
     """Get optimal model routing recommendation."""
     router = get_smart_router()
@@ -475,7 +502,7 @@ async def smart_route(
 
 @enterprise_router.get("/route/stats")
 async def get_routing_stats(
-    api_key: APIKey = Depends(lambda: None),
+    api_key: APIKey | None = Depends(get_current_api_key),
 ) -> dict[str, Any]:
     """Get model routing statistics."""
     router = get_smart_router()
@@ -490,7 +517,7 @@ async def get_routing_stats(
 @enterprise_router.post("/guardrails/check")
 async def check_guardrails(
     request: GuardrailCheckRequest,
-    api_key: APIKey = Depends(lambda: None),
+    api_key: APIKey | None = Depends(get_current_api_key),
 ) -> dict[str, Any]:
     """Check content against guardrails."""
     pipeline = get_guardrail_pipeline()
@@ -533,7 +560,7 @@ async def check_guardrails(
 @enterprise_router.post("/evaluate")
 async def evaluate_response(
     request: EvaluateRequest,
-    api_key: APIKey = Depends(lambda: None),
+    api_key: APIKey | None = Depends(get_current_api_key),
 ) -> dict[str, Any]:
     """Evaluate a model response for quality."""
     pipeline = get_evaluation_pipeline()
@@ -559,13 +586,21 @@ async def evaluate_response(
 @enterprise_router.post("/audit/query")
 async def query_audit_logs(
     request: AuditQueryRequest,
-    api_key: APIKey = Depends(lambda: None),
+    api_key: APIKey | None = Depends(get_current_api_key),
 ) -> dict[str, Any]:
     """Query audit logs (admin only)."""
     audit = get_audit_logger()
     tenant_id = api_key.key_id if api_key else "global"
 
-    action = AuditAction(request.action) if request.action else None
+    action = None
+    if request.action:
+        try:
+            action = AuditAction(request.action)
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid action. Valid values: {[a.value for a in AuditAction]}"
+            ) from None
 
     entries = await audit.query(
         tenant_id=tenant_id,
@@ -587,7 +622,7 @@ async def export_audit_logs(
     start_time: datetime = Query(..., description="Export start time"),
     end_time: datetime = Query(..., description="Export end time"),
     format: str = Query("json", description="Export format (json, csv)"),
-    api_key: APIKey = Depends(lambda: None),
+    api_key: APIKey | None = Depends(get_current_api_key),
 ) -> dict[str, Any]:
     """Export audit logs for compliance."""
     audit = get_audit_logger()
@@ -616,7 +651,7 @@ async def export_audit_logs(
 @enterprise_router.get("/traces")
 async def list_traces(
     limit: int = Query(50, ge=1, le=500),
-    api_key: APIKey = Depends(lambda: None),
+    api_key: APIKey | None = Depends(get_current_api_key),
 ) -> dict[str, Any]:
     """List recent traces (requires Redis)."""
     # This would query Redis for stored traces
@@ -629,7 +664,7 @@ async def list_traces(
 
 @enterprise_router.get("/features")
 async def list_features(
-    api_key: APIKey = Depends(lambda: None),
+    api_key: APIKey | None = Depends(get_current_api_key),
 ) -> dict[str, Any]:
     """List all enterprise features and their status."""
     return {

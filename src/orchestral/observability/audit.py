@@ -108,16 +108,20 @@ class AuditEntry:
             self.checksum = self._calculate_checksum()
 
     def _calculate_checksum(self) -> str:
-        """Calculate integrity checksum."""
+        """Calculate integrity checksum for all fields that need tamper protection."""
         content = json.dumps({
             "entry_id": self.entry_id,
             "timestamp": self.timestamp.isoformat(),
             "action": self.action.value,
+            "severity": self.severity.value,
             "actor_type": self.actor_type,
             "actor_id": self.actor_id,
+            "actor_ip": self.actor_ip,
             "resource_type": self.resource_type,
             "resource_id": self.resource_id,
             "tenant_id": self.tenant_id,
+            "request_id": self.request_id,
+            "trace_id": self.trace_id,
             "details": self.details,
         }, sort_keys=True)
         return hashlib.sha256(content.encode()).hexdigest()
@@ -445,14 +449,22 @@ class AuditLogger:
         )
 
         if format == "csv":
-            lines = ["entry_id,timestamp,action,actor_type,actor_id,resource_type,resource_id"]
+            import csv
+            import io
+            output = io.StringIO()
+            writer = csv.writer(output, quoting=csv.QUOTE_MINIMAL)
+            writer.writerow(["entry_id", "timestamp", "action", "actor_type", "actor_id", "resource_type", "resource_id"])
             for entry in entries:
-                lines.append(
-                    f"{entry.entry_id},{entry.timestamp.isoformat()},{entry.action.value},"
-                    f"{entry.actor_type},{entry.actor_id or ''},{entry.resource_type or ''},"
-                    f"{entry.resource_id or ''}"
-                )
-            return "\n".join(lines)
+                writer.writerow([
+                    entry.entry_id,
+                    entry.timestamp.isoformat(),
+                    entry.action.value,
+                    entry.actor_type,
+                    entry.actor_id or '',
+                    entry.resource_type or '',
+                    entry.resource_id or '',
+                ])
+            return output.getvalue()
         else:
             return json.dumps([e.to_dict() for e in entries], indent=2)
 

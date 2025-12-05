@@ -505,8 +505,8 @@ async def root() -> dict[str, str]:
     """Root endpoint."""
     return {
         "name": "Orchestral API",
-        "version": "2.0.0",
-        "edition": "Commercial",
+        "version": "3.0.0",
+        "edition": "Enterprise",
         "description": "Multi-model AI orchestration platform",
     }
 

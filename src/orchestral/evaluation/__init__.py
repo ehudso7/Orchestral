@@ -7,31 +7,20 @@ for continuous improvement of LLM outputs.
 
 from orchestral.evaluation.evaluator import (
     EvaluationMetric,
-    EvaluationResult,
     Evaluator,
     RelevanceEvaluator,
     CoherenceEvaluator,
     FactualityEvaluator,
     ToxicityEvaluator,
+    AggregatedEvaluation,
     EvaluationPipeline,
     get_evaluation_pipeline,
+    configure_evaluation_pipeline,
 )
 
-__all__ = [
-    "EvaluationMetric",
-    "EvaluationResult",
-    "Evaluator",
-    "RelevanceEvaluator",
-    "CoherenceEvaluator",
-    "FactualityEvaluator",
-    "ToxicityEvaluator",
-    "EvaluationPipeline",
-    "get_evaluation_pipeline",
-Response evaluation and quality scoring module.
-
-Provides automatic evaluation of LLM responses across multiple dimensions
-including relevance, coherence, accuracy, and safety.
-"""
+# Note: EvaluationResult from evaluator is intentionally not re-exported
+# to avoid collision with scorer's EvaluationResult
+from orchestral.evaluation.evaluator import EvaluationResult as MetricEvaluationResult
 
 from orchestral.evaluation.scorer import (
     QualityScorer,
@@ -47,10 +36,24 @@ from orchestral.evaluation.metrics import (
 )
 
 __all__ = [
+    # Evaluator exports
+    "EvaluationMetric",
+    "MetricEvaluationResult",
+    "Evaluator",
+    "RelevanceEvaluator",
+    "CoherenceEvaluator",
+    "FactualityEvaluator",
+    "ToxicityEvaluator",
+    "AggregatedEvaluation",
+    "EvaluationPipeline",
+    "get_evaluation_pipeline",
+    "configure_evaluation_pipeline",
+    # Scorer exports
     "QualityScorer",
     "QualityScore",
     "EvaluationConfig",
     "EvaluationResult",
+    # Metrics exports
     "ResponseMetrics",
     "compute_readability",
     "compute_coherence",
