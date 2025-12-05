@@ -469,3 +469,25 @@ class APIKeyManager:
             return None
         else:
             return self._local_cache.get(key_id)
+
+
+# Global instance for singleton access
+_api_key_manager: APIKeyManager | None = None
+
+
+def get_api_key_manager() -> APIKeyManager:
+    """Get the global API key manager."""
+    global _api_key_manager
+    if _api_key_manager is None:
+        _api_key_manager = APIKeyManager()
+    return _api_key_manager
+
+
+def configure_api_key_manager(
+    redis_client: Any | None = None,
+    secret_key: bytes | None = None,
+) -> APIKeyManager:
+    """Configure the global API key manager."""
+    global _api_key_manager
+    _api_key_manager = APIKeyManager(redis_client=redis_client, secret_key=secret_key)
+    return _api_key_manager
