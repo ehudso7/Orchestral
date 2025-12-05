@@ -36,10 +36,12 @@ async def get_current_api_key(
         return None
 
     manager = get_api_key_manager()
-    api_key = await manager.validate_key(x_api_key)
+    api_key = manager.validate_key(x_api_key)  # validate_key is synchronous
     if not api_key:
         raise HTTPException(status_code=401, detail="Invalid API key")
     return api_key
+
+
 from orchestral.prompts.manager import (
     Prompt,
     PromptManager,
