@@ -445,7 +445,11 @@ async def health_check(
 
     cache_stats = None
     if response_cache:
-        cache_stats = (await response_cache.get_stats()).to_dict()
+        try:
+            cache_stats = (await response_cache.get_stats()).to_dict()
+        except Exception as e:
+            logger.warning("Failed to get cache stats for health check", error=str(e))
+            # Continue without cache stats to keep health endpoint available
 
     return {
         "status": "healthy" if any(provider_health.values()) else "degraded",
@@ -612,8 +616,10 @@ async def simple_completion(
         )
         if cached:
             # Use actual token counts from cache for accurate cost savings
-            usage_data = cached.response_data.get("usage", {})
-            input_tokens = usage_data.get("input_tokens", 100)  # Fallback for old entries
+            # Handle case where usage might be None instead of missing
+            usage_data = cached.response_data.get("usage") or {}
+            # Use prompt length for more accurate fallback estimation
+            input_tokens = usage_data.get("input_tokens", len(request.prompt) // 4)
             output_tokens = usage_data.get("output_tokens", len(cached.response_content) // 4)
             cost_saved = usage_tracker.calculate_cost(
                 request.model,
@@ -1042,7 +1048,11 @@ async def get_metrics(
     summary = metrics.get_summary()
 
     if response_cache:
-        summary["cache"] = (await response_cache.get_stats()).to_dict()
+        try:
+            summary["cache"] = (await response_cache.get_stats()).to_dict()
+        except Exception as e:
+            logger.warning("Failed to get cache stats for metrics", error=str(e))
+            # Continue without cache stats to keep metrics endpoint available
 
     return summary
 

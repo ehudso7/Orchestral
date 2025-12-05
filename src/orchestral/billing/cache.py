@@ -312,7 +312,7 @@ class ResponseCache:
         count = 0
 
         if self._redis:
-            loop = asyncio.get_event_loop()
+            loop = asyncio.get_running_loop()
             # Cache key format is: tenant_id:model:hash
             # For model-specific invalidation, match *:model:*
             # For all models, match *
@@ -321,22 +321,39 @@ class ResponseCache:
             else:
                 pattern = f"{self.CACHE_PREFIX}*"
 
-            # Collect keys first (in executor to avoid blocking)
-            keys_to_check = await loop.run_in_executor(
-                None, lambda: list(self._redis.scan_iter(pattern))
-            )
+            def _process_keys_iteratively():
+                """Process keys iteratively to avoid loading all into memory."""
+                nonlocal count
+                local_count = 0
+                for key in self._redis.scan_iter(pattern):
+                    # Decode key if bytes
+                    key_str = key.decode("utf-8") if isinstance(key, bytes) else key
+                    # Skip STATS_KEY (it's a Redis hash, not a cache entry)
+                    if key_str == self.STATS_KEY:
+                        continue
 
-            for key in keys_to_check:
-                if older_than:
-                    data = await loop.run_in_executor(None, self._redis.get, key)
-                    if data:
-                        entry = CacheEntry.from_dict(json.loads(data))
-                        if entry.created_at < older_than:
-                            await loop.run_in_executor(None, self._redis.delete, key)
-                            count += 1
-                else:
-                    await loop.run_in_executor(None, self._redis.delete, key)
-                    count += 1
+                    if older_than:
+                        try:
+                            data = self._redis.get(key)
+                            if data:
+                                entry = CacheEntry.from_dict(json.loads(data))
+                                if entry.created_at < older_than:
+                                    self._redis.delete(key)
+                                    local_count += 1
+                        except (json.JSONDecodeError, KeyError) as e:
+                            # Skip malformed entries, log and continue
+                            logger.warning("Skipping malformed cache entry", key=key_str, error=str(e))
+                            continue
+                    else:
+                        self._redis.delete(key)
+                        local_count += 1
+                return local_count
+
+            try:
+                count = await loop.run_in_executor(None, _process_keys_iteratively)
+            except Exception as e:
+                logger.error("Cache invalidation failed", error=str(e))
+                # Return partial count on failure
         else:
             keys_to_delete = []
             for key, entry in self._local_cache.items():
@@ -360,15 +377,24 @@ class ResponseCache:
     async def get_stats(self) -> CacheStats:
         """Get cache statistics."""
         if self._redis:
-            loop = asyncio.get_event_loop()
+            loop = asyncio.get_running_loop()
 
             def _count_keys():
                 count = 0
-                for _ in self._redis.scan_iter(f"{self.CACHE_PREFIX}*"):
+                for key in self._redis.scan_iter(f"{self.CACHE_PREFIX}*"):
+                    # Decode key if bytes
+                    key_str = key.decode("utf-8") if isinstance(key, bytes) else key
+                    # Skip STATS_KEY (it's a Redis hash, not a cache entry)
+                    if key_str == self.STATS_KEY:
+                        continue
                     count += 1
                 return count
 
-            self._stats.cache_size = await loop.run_in_executor(None, _count_keys)
+            try:
+                self._stats.cache_size = await loop.run_in_executor(None, _count_keys)
+            except Exception as e:
+                logger.warning("Failed to get cache size from Redis", error=str(e))
+                # Keep previous cache_size value on failure
         else:
             self._stats.cache_size = len(self._local_cache)
 
@@ -379,20 +405,26 @@ class ResponseCache:
         self._stats.total_cost_saved_usd += cost_usd
 
         if self._redis:
-            loop = asyncio.get_event_loop()
-            await loop.run_in_executor(
-                None, lambda: self._redis.hincrbyfloat(self.STATS_KEY, "total_cost_saved_usd", cost_usd)
-            )
+            loop = asyncio.get_running_loop()
+            try:
+                await loop.run_in_executor(
+                    None, lambda: self._redis.hincrbyfloat(self.STATS_KEY, "total_cost_saved_usd", cost_usd)
+                )
+            except Exception as e:
+                logger.warning("Failed to record cost saved to Redis", error=str(e))
 
     async def _get_entry(self, cache_key: str) -> CacheEntry | None:
         """Get a cache entry."""
         full_key = f"{self.CACHE_PREFIX}{cache_key}"
 
         if self._redis:
-            loop = asyncio.get_event_loop()
-            data = await loop.run_in_executor(None, self._redis.get, full_key)
-            if data:
-                return CacheEntry.from_dict(json.loads(data))
+            loop = asyncio.get_running_loop()
+            try:
+                data = await loop.run_in_executor(None, self._redis.get, full_key)
+                if data:
+                    return CacheEntry.from_dict(json.loads(data))
+            except Exception as e:
+                logger.warning("Failed to get cache entry from Redis", cache_key=cache_key, error=str(e))
             return None
         else:
             return self._local_cache.get(cache_key)
@@ -407,10 +439,13 @@ class ResponseCache:
             if ttl <= 0:
                 logger.debug("Skipping cache store for expired entry", cache_key=entry.cache_key)
                 return
-            loop = asyncio.get_event_loop()
-            await loop.run_in_executor(
-                None, lambda: self._redis.setex(full_key, ttl, json.dumps(entry.to_dict()))
-            )
+            loop = asyncio.get_running_loop()
+            try:
+                await loop.run_in_executor(
+                    None, lambda: self._redis.setex(full_key, ttl, json.dumps(entry.to_dict()))
+                )
+            except Exception as e:
+                logger.warning("Failed to store cache entry in Redis", cache_key=entry.cache_key, error=str(e))
         else:
             self._local_cache[entry.cache_key] = entry
 
@@ -429,7 +464,10 @@ class ResponseCache:
         full_key = f"{self.CACHE_PREFIX}{cache_key}"
 
         if self._redis:
-            loop = asyncio.get_event_loop()
-            await loop.run_in_executor(None, self._redis.delete, full_key)
+            loop = asyncio.get_running_loop()
+            try:
+                await loop.run_in_executor(None, self._redis.delete, full_key)
+            except Exception as e:
+                logger.warning("Failed to delete cache entry from Redis", cache_key=cache_key, error=str(e))
         else:
             self._local_cache.pop(cache_key, None)
