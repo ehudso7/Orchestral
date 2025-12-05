@@ -258,8 +258,8 @@ class EventEmitter:
 
     async def _dispatch(self, event: Event) -> None:
         """Dispatch event to all handlers."""
-        # Call in-process handlers
-        handlers = self._handlers.get(event.event_type, [])
+        # Call in-process handlers - create a copy to avoid mutating internal list
+        handlers = list(self._handlers.get(event.event_type, []))
         handlers.extend(self._handlers.get(None, []))  # Global handlers
 
         for handler in handlers:

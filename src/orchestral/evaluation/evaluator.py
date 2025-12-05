@@ -194,7 +194,7 @@ class RelevanceEvaluator(Evaluator):
             "each", "few", "more", "most", "other", "some", "such",
             "no", "nor", "not", "only", "own", "same", "so", "than",
             "too", "very", "just", "and", "but", "if", "or", "because",
-            "until", "while", "this", "that", "these", "those", "i",
+            "until", "while", "these", "those", "i",
             "me", "my", "we", "our", "you", "your", "he", "him", "his",
             "she", "her", "it", "its", "they", "them", "their", "what",
             "which", "who", "whom", "this", "that", "am", "it's",
@@ -228,13 +228,24 @@ class CoherenceEvaluator(Evaluator):
         context: dict[str, Any] | None = None,
     ) -> EvaluationResult:
         """Evaluate coherence."""
-        if not self.enabled or not response.strip():
+        if not self.enabled:
             return EvaluationResult(
                 metric=self.metric,
-                score=1.0 if not response.strip() else 0.0,
+                score=1.0,
                 passed=True,
                 threshold=self.threshold,
                 evaluator_name=self.name,
+            )
+
+        # Empty responses should fail coherence check
+        if not response.strip():
+            return EvaluationResult(
+                metric=self.metric,
+                score=0.0,
+                passed=False,
+                threshold=self.threshold,
+                evaluator_name=self.name,
+                details={"reason": "empty_response"},
             )
 
         scores = []
