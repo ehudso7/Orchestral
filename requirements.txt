@@ -24,3 +24,5 @@ sse-starlette~=2.1.0
 PyYAML~=6.0.0
 # Pillow ~=11.3.0 required for CVE-2025-48379 security fix
 pillow~=11.3.0
+# NumPy required for semantic cache vector operations
+numpy~=1.26.0
