@@ -9,6 +9,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 import secrets
+import threading
 import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -473,13 +474,33 @@ class APIKeyManager:
 
 # Global instance for singleton access
 _api_key_manager: APIKeyManager | None = None
+_api_key_manager_lock = threading.Lock()
 
 
 def get_api_key_manager() -> APIKeyManager:
-    """Get the global API key manager."""
+    """
+    Get the global API key manager instance.
+
+    Creates a new manager with default configuration (in-memory mode)
+    if one hasn't been configured yet via configure_api_key_manager().
+
+    This function is thread-safe and uses double-checked locking to
+    ensure only one instance is created even under concurrent access.
+
+    Returns:
+        The global APIKeyManager instance.
+
+    Note:
+        For production use, call configure_api_key_manager() during
+        application startup to set up Redis persistence and a stable
+        secret key. Otherwise, keys will be lost on restart.
+    """
     global _api_key_manager
     if _api_key_manager is None:
-        _api_key_manager = APIKeyManager()
+        with _api_key_manager_lock:
+            if _api_key_manager is None:
+                _api_key_manager = APIKeyManager()
+                logger.info("Initialized default APIKeyManager (in-memory mode)")
     return _api_key_manager
 
 
@@ -487,7 +508,38 @@ def configure_api_key_manager(
     redis_client: Any | None = None,
     secret_key: bytes | None = None,
 ) -> APIKeyManager:
-    """Configure the global API key manager."""
+    """
+    Configure the global API key manager with explicit settings.
+
+    This should be called during application startup before any requests
+    are processed. It is thread-safe but will warn if replacing an
+    existing manager instance.
+
+    Args:
+        redis_client: Redis client for persistent storage. If None,
+            uses in-memory storage (not recommended for production).
+        secret_key: Secret key for API key hashing. Should be a 32-byte
+            value. If None, will attempt to load from Redis or generate
+            a new one (see APIKeyManager._initialize_secret_key).
+
+    Returns:
+        The configured APIKeyManager instance.
+
+    Warning:
+        Calling this function multiple times will replace the existing
+        manager, potentially invalidating any cached state. A warning
+        will be logged if this occurs.
+    """
     global _api_key_manager
-    _api_key_manager = APIKeyManager(redis_client=redis_client, secret_key=secret_key)
-    return _api_key_manager
+    with _api_key_manager_lock:
+        if _api_key_manager is not None:
+            logger.warning(
+                "Reconfiguring global APIKeyManager; existing instance will be replaced"
+            )
+        _api_key_manager = APIKeyManager(redis_client=redis_client, secret_key=secret_key)
+        logger.info(
+            "Configured APIKeyManager",
+            has_redis=redis_client is not None,
+            has_secret_key=secret_key is not None,
+        )
+        return _api_key_manager
