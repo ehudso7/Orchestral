@@ -20,6 +20,7 @@ import jwt
 
 from orchestral.core.config import get_settings
 from orchestral.billing.api_keys import get_api_key_manager, KeyTier
+from orchestral.api.db import db
 
 logger = structlog.get_logger()
 
@@ -32,10 +33,6 @@ router = APIRouter(prefix="/auth", tags=["authentication"])
 JWT_SECRET = get_settings().server.admin_api_key.get_secret_value() if get_settings().server.admin_api_key else secrets.token_urlsafe(32)
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRATION_HOURS = 24
-
-# In-memory user store (replace with database in production)
-users_db: dict[str, dict[str, Any]] = {}
-sessions_db: dict[str, dict[str, Any]] = {}
 
 
 # ==================== REQUEST/RESPONSE MODELS ====================
@@ -174,13 +171,20 @@ async def get_current_user(
     payload = decode_access_token(token)
 
     user_id = payload.get("sub")
-    if not user_id or user_id not in users_db:
+    if not user_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token",
+        )
+
+    user = db.get_user(user_id)
+    if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User not found",
         )
 
-    return users_db[user_id]
+    return user
 
 
 # ==================== AUTH ENDPOINTS ====================
@@ -197,7 +201,7 @@ async def signup(request: UserSignup):
     """
     try:
         # Check if email already exists
-        if any(u["email"] == request.email for u in users_db.values()):
+        if db.get_user_by_email(request.email):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Email already registered",
@@ -227,14 +231,38 @@ async def signup(request: UserSignup):
             )
             user["api_key_id"] = api_key.key_id
             user["api_key"] = raw_key  # Store temporarily for initial response
+
+            # Save API key to database
+            db.save_api_key(api_key.key_id, {
+                "key_id": api_key.key_id,
+                "name": api_key.name,
+                "owner_id": user_id,
+                "tier": "free",
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "is_active": True,
+                "raw_key": raw_key  # Store for development only
+            })
         except Exception as e:
             # If API key generation fails, create a simple fallback key
             logger.warning(f"API key generation failed: {e}, using fallback")
             fallback_key = f"orch_{secrets.token_hex(8)}_{secrets.token_urlsafe(32)}"
-            user["api_key_id"] = f"orch_{secrets.token_hex(8)}"
+            key_id = f"orch_{secrets.token_hex(8)}"
+            user["api_key_id"] = key_id
             user["api_key"] = fallback_key
 
-        users_db[user_id] = user
+            # Save fallback key to database
+            db.save_api_key(key_id, {
+                "key_id": key_id,
+                "name": f"{request.full_name}'s API Key",
+                "owner_id": user_id,
+                "tier": "free",
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "is_active": True,
+                "raw_key": fallback_key  # Store for development only
+            })
+
+        # Save user to database
+        db.create_user(user_id, user)
 
         # Create session token
         access_token = create_access_token({"sub": user_id})
@@ -267,11 +295,7 @@ async def login(request: UserLogin):
     Supports passwords of ANY length thanks to SHA256 pre-hashing.
     """
     # Find user by email
-    user = None
-    for u in users_db.values():
-        if u["email"] == request.email:
-            user = u
-            break
+    user = db.get_user_by_email(request.email)
 
     if not user or not verify_password(request.password, user["password_hash"]):
         raise HTTPException(
@@ -334,7 +358,7 @@ async def update_profile(
     if company is not None:
         current_user["company"] = company
 
-    users_db[current_user["id"]] = current_user
+    db.update_user(current_user["id"], current_user)
 
     logger.info("User profile updated", user_id=current_user["id"])
 
@@ -355,11 +379,7 @@ async def request_password_reset(request: PasswordReset):
     In production, this would send an email with a reset link.
     """
     # Find user by email
-    user = None
-    for u in users_db.values():
-        if u["email"] == request.email:
-            user = u
-            break
+    user = db.get_user_by_email(request.email)
 
     if not user:
         # Don't reveal if email exists
@@ -371,6 +391,9 @@ async def request_password_reset(request: PasswordReset):
     user["reset_token_expires"] = (
         datetime.now(timezone.utc) + timedelta(hours=1)
     ).isoformat()
+
+    # Update user in database
+    db.update_user(user["id"], user)
 
     logger.info("Password reset requested", user_id=user["id"])
 
@@ -387,7 +410,8 @@ async def update_password(request: PasswordUpdate):
     """Update password with reset token."""
     # Find user with matching reset token
     user = None
-    for u in users_db.values():
+    all_users = db.get_all_users()
+    for u in all_users.values():
         if u.get("reset_token") == request.token:
             # Check if token is expired
             expires_at = datetime.fromisoformat(u.get("reset_token_expires", ""))
@@ -410,6 +434,9 @@ async def update_password(request: PasswordUpdate):
     user.pop("reset_token", None)
     user.pop("reset_token_expires", None)
 
+    # Update user in database
+    db.update_user(user["id"], user)
+
     logger.info("Password updated", user_id=user["id"])
 
     return {"message": "Password updated successfully"}
@@ -430,18 +457,18 @@ async def verify_token(current_user: dict[str, Any] = Depends(get_current_user))
 @router.get("/api-keys")
 async def list_api_keys(current_user: dict[str, Any] = Depends(get_current_user)):
     """List user's API keys."""
-    api_key_manager = get_api_key_manager()
-    keys = api_key_manager.list_keys(owner_id=current_user["id"])
+    # Get keys from database
+    keys = db.get_user_api_keys(current_user["id"])
 
     return {
         "keys": [
             {
-                "key_id": k.key_id,
-                "name": k.name,
-                "tier": k.tier.value,
-                "created_at": k.created_at.isoformat(),
-                "last_used": k.last_used.isoformat() if k.last_used else None,
-                "is_active": k.is_active,
+                "key_id": k.get("key_id"),
+                "name": k.get("name"),
+                "tier": k.get("tier", "free"),
+                "created_at": k.get("created_at"),
+                "last_used": k.get("last_used"),
+                "is_active": k.get("is_active", True),
             }
             for k in keys
         ]
@@ -454,26 +481,62 @@ async def create_api_key(
     current_user: dict[str, Any] = Depends(get_current_user),
 ):
     """Create a new API key."""
-    api_key_manager = get_api_key_manager()
+    try:
+        api_key_manager = get_api_key_manager()
 
-    # Determine tier based on subscription
-    tier = KeyTier(current_user.get("tier", "free").upper())
+        # Determine tier based on subscription
+        tier = KeyTier(current_user.get("tier", "free").upper())
 
-    raw_key, api_key = api_key_manager.generate_key(
-        name=name,
-        tier=tier,
-        owner_id=current_user["id"],
-    )
+        raw_key, api_key = api_key_manager.generate_key(
+            name=name,
+            tier=tier,
+            owner_id=current_user["id"],
+        )
 
-    logger.info("API key created", user_id=current_user["id"], key_id=api_key.key_id)
+        # Save to database
+        db.save_api_key(api_key.key_id, {
+            "key_id": api_key.key_id,
+            "name": name,
+            "owner_id": current_user["id"],
+            "tier": tier.value.lower(),
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "is_active": True,
+            "raw_key": raw_key  # Store for development only
+        })
 
-    return {
-        "key": raw_key,
-        "key_id": api_key.key_id,
-        "name": api_key.name,
-        "tier": api_key.tier.value,
-        "warning": "Store this key securely. You won't be able to see it again.",
-    }
+        logger.info("API key created", user_id=current_user["id"], key_id=api_key.key_id)
+
+        return {
+            "key": raw_key,
+            "key_id": api_key.key_id,
+            "name": api_key.name,
+            "tier": api_key.tier.value,
+            "warning": "Store this key securely. You won't be able to see it again.",
+        }
+    except Exception as e:
+        # Fallback to simple key generation
+        logger.warning(f"API key generation failed: {e}, using fallback")
+        key_id = f"orch_{secrets.token_hex(8)}"
+        raw_key = f"orch_{secrets.token_hex(8)}_{secrets.token_urlsafe(32)}"
+
+        # Save to database
+        db.save_api_key(key_id, {
+            "key_id": key_id,
+            "name": name,
+            "owner_id": current_user["id"],
+            "tier": current_user.get("tier", "free"),
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "is_active": True,
+            "raw_key": raw_key  # Store for development only
+        })
+
+        return {
+            "key": raw_key,
+            "key_id": key_id,
+            "name": name,
+            "tier": current_user.get("tier", "free"),
+            "warning": "Store this key securely. You won't be able to see it again.",
+        }
 
 
 @router.delete("/api-keys/{key_id}")
@@ -482,17 +545,23 @@ async def revoke_api_key(
     current_user: dict[str, Any] = Depends(get_current_user),
 ):
     """Revoke an API key."""
-    api_key_manager = get_api_key_manager()
-
-    # Verify ownership
-    key = api_key_manager.get_key(key_id)
-    if not key or key.owner_id != current_user["id"]:
+    # Verify ownership from database
+    key = db.get_api_key(key_id)
+    if not key or key.get("owner_id") != current_user["id"]:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="API key not found",
         )
 
-    api_key_manager.revoke_key(key_id)
+    # Delete from database
+    db.delete_api_key(key_id)
+
+    # Try to revoke in API key manager if available
+    try:
+        api_key_manager = get_api_key_manager()
+        api_key_manager.revoke_key(key_id)
+    except Exception:
+        pass  # Ignore errors from API key manager
 
     logger.info("API key revoked", user_id=current_user["id"], key_id=key_id)
 

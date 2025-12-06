@@ -330,33 +330,41 @@
         // Load dashboard data
         async function loadDashboardData() {
             try {
-                // Load usage stats
-                const usage = await axios.get(`${API_BASE}/v1/usage`, {
-                    headers: { 'X-Api-Key': user.api_key }
-                });
+                // Load dashboard stats
+                const stats = await axios.get(`${API_BASE}/dashboard/stats`);
 
-                document.getElementById('apiCallsToday').textContent = usage.data.requests_today || 0;
-                document.getElementById('tokensUsed').textContent = formatNumber(usage.data.tokens_used || 0);
-                document.getElementById('currentTier').textContent = usage.data.tier || 'Free';
-                document.getElementById('monthlyCost').textContent = `$${usage.data.cost_usd || 0}`;
+                document.getElementById('apiCallsToday').textContent = stats.data.api_calls_today || 0;
+                document.getElementById('tokensUsed').textContent = formatNumber(stats.data.tokens_used || 0);
+                document.getElementById('currentTier').textContent = (stats.data.tier || 'Free').charAt(0).toUpperCase() + (stats.data.tier || 'Free').slice(1);
+                document.getElementById('monthlyCost').textContent = `$${stats.data.monthly_cost || 0}`;
 
-                // Load usage chart
-                loadUsageChart();
+                // Load usage chart with real data
+                loadUsageChart(stats.data.usage_history);
             } catch (error) {
                 console.error('Failed to load dashboard data:', error);
+                // Set default values on error
+                document.getElementById('apiCallsToday').textContent = '0';
+                document.getElementById('tokensUsed').textContent = '0';
+                document.getElementById('currentTier').textContent = 'Free';
+                document.getElementById('monthlyCost').textContent = '$0';
             }
         }
 
         // Load usage chart
-        function loadUsageChart() {
+        function loadUsageChart(historyData) {
             const ctx = document.getElementById('usageChart').getContext('2d');
+
+            // Use provided data or defaults
+            const labels = historyData ? historyData.map(d => d.date) : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+            const data = historyData ? historyData.map(d => d.calls) : [65, 59, 80, 81, 56, 55, 40];
+
             new Chart(ctx, {
                 type: 'line',
                 data: {
-                    labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                    labels: labels,
                     datasets: [{
                         label: 'API Calls',
-                        data: [65, 59, 80, 81, 56, 55, 40],
+                        data: data,
                         borderColor: 'rgb(102, 126, 234)',
                         backgroundColor: 'rgba(102, 126, 234, 0.1)',
                         tension: 0.4
@@ -447,44 +455,43 @@
         // Billing Management
         async function loadBillingInfo() {
             try {
-                const response = await axios.get(`${API_BASE}/billing/status`, {
-                    headers: { 'X-Api-Key': user.api_key }
-                });
+                const response = await axios.get(`${API_BASE}/dashboard/billing/status`);
 
-                document.getElementById('planName').textContent = response.data.current_tier || 'Free';
+                const tierName = (response.data.current_tier || 'free').charAt(0).toUpperCase() +
+                               (response.data.current_tier || 'free').slice(1);
+                document.getElementById('planName').textContent = tierName;
+
+                // Update plan details based on tier
+                const planDetails = {
+                    'Free': '100K tokens/month • 10 req/min',
+                    'Starter': '1M tokens/month • 60 req/min',
+                    'Pro': '10M tokens/month • 300 req/min',
+                    'Enterprise': 'Unlimited • Custom limits'
+                };
+                document.getElementById('planDetails').textContent = planDetails[tierName] || '100K tokens/month • 10 req/min';
 
                 // Load payment methods
-                if (response.data.has_customer) {
-                    const methods = await axios.get(`${API_BASE}/billing/payment-methods`, {
-                        headers: { 'X-Api-Key': user.api_key }
-                    });
-
-                    const paymentSection = document.getElementById('paymentMethodSection');
-                    if (methods.data.length > 0) {
-                        paymentSection.innerHTML = methods.data.map(pm => `
-                            <div class="flex items-center justify-between p-3 border rounded-lg">
-                                <div>
-                                    <i class="fab fa-cc-${pm.card_brand?.toLowerCase()} mr-2"></i>
-                                    •••• ${pm.card_last4}
-                                </div>
-                                <button onclick="removePaymentMethod('${pm.payment_method_id}')" class="text-red-600">
-                                    <i class="fas fa-trash"></i>
-                                </button>
+                const paymentSection = document.getElementById('paymentMethodSection');
+                if (response.data.payment_methods && response.data.payment_methods.length > 0) {
+                    paymentSection.innerHTML = response.data.payment_methods.map(pm => `
+                        <div class="flex items-center justify-between p-3 border rounded-lg">
+                            <div>
+                                <i class="fab fa-cc-${pm.card_brand?.toLowerCase()} mr-2"></i>
+                                •••• ${pm.card_last4}
                             </div>
-                        `).join('');
-                    } else {
-                        paymentSection.innerHTML = '<p class="text-gray-500">No payment methods on file</p>';
-                    }
+                            <button onclick="removePaymentMethod('${pm.payment_method_id}')" class="text-red-600">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    `).join('');
+                } else {
+                    paymentSection.innerHTML = '<p class="text-gray-500">No payment methods on file</p>';
                 }
 
                 // Load invoices
-                const invoices = await axios.get(`${API_BASE}/billing/invoices`, {
-                    headers: { 'X-Api-Key': user.api_key }
-                });
-
                 const invoicesTable = document.getElementById('invoicesTable');
-                if (invoices.data.length > 0) {
-                    invoicesTable.innerHTML = invoices.data.map(inv => `
+                if (response.data.invoices && response.data.invoices.length > 0) {
+                    invoicesTable.innerHTML = response.data.invoices.map(inv => `
                         <tr>
                             <td class="px-6 py-4">${formatDate(inv.created_at)}</td>
                             <td class="px-6 py-4">$${(inv.amount_paid / 100).toFixed(2)}</td>
@@ -507,11 +514,28 @@
                 }
             } catch (error) {
                 console.error('Failed to load billing info:', error);
+                // Set defaults on error
+                document.getElementById('planName').textContent = 'Free';
+                document.getElementById('planDetails').textContent = '100K tokens/month • 10 req/min';
+                document.getElementById('paymentMethodSection').innerHTML = '<p class="text-gray-500">No payment methods on file</p>';
+                document.getElementById('invoicesTable').innerHTML = '<tr><td colspan="4" class="text-center py-4 text-gray-500">No invoices yet</td></tr>';
             }
         }
 
         async function changePlan() {
             window.location.href = '/#pricing';
+        }
+
+        // Load usage data
+        async function loadUsageData() {
+            try {
+                const response = await axios.get(`${API_BASE}/dashboard/usage`);
+
+                // Update usage display with detailed information
+                console.log('Usage data loaded:', response.data);
+            } catch (error) {
+                console.error('Failed to load usage data:', error);
+            }
         }
 
         async function addPaymentMethod() {

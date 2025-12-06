@@ -337,6 +337,10 @@ def create_app() -> FastAPI:
     # Include auth router
     from orchestral.api.auth import router as auth_router
     app.include_router(auth_router)
+
+    # Include dashboard router
+    from orchestral.api.dashboard import router as dashboard_router
+    app.include_router(dashboard_router)
     # Mount static files for landing page
     import os
     from pathlib import Path
