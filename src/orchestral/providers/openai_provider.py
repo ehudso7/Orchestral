@@ -46,15 +46,18 @@ class OpenAIProvider(BaseProvider):
     provider = ModelProvider.OPENAI
 
     # Models that require max_completion_tokens instead of max_tokens
-    REASONING_MODELS = frozenset({
+    # These models don't support temperature, top_p, frequency_penalty, etc.
+    COMPLETION_TOKEN_MODELS = frozenset({
         "o1", "o1-mini", "o1-preview",
         "o3", "o3-mini", "o3-preview",
+        "gpt-5.1", "gpt-5",  # Newer flagship models
     })
 
     def _uses_completion_tokens(self, model: str) -> bool:
         """Check if model requires max_completion_tokens instead of max_tokens."""
         model_lower = model.lower()
-        return any(model_lower.startswith(rm) for rm in self.REASONING_MODELS)
+        # Check exact prefix matches for reasoning/new models
+        return any(model_lower.startswith(rm) for rm in self.COMPLETION_TOKEN_MODELS)
 
     def __init__(
         self,
