@@ -37,10 +37,10 @@ class OpenAIProvider(BaseProvider):
     OpenAI provider for ChatGPT models.
 
     Supports:
-    - GPT-5.1 (flagship with adaptive reasoning)
     - GPT-4o (standard multimodal)
     - GPT-4o-mini (fast and cost-effective)
     - o1, o3 reasoning models
+    - o1/o3 series (reasoning models)
     """
 
     provider = ModelProvider.OPENAI
@@ -58,6 +58,12 @@ class OpenAIProvider(BaseProvider):
         model_lower = model.lower()
         # Check exact prefix matches for reasoning/new models
         return any(model_lower.startswith(rm) for rm in self.COMPLETION_TOKEN_MODELS)
+    REASONING_MODELS = {"o1", "o1-mini", "o1-preview", "o3", "o3-mini", "gpt-5.1"}
+
+    # Map fictional/placeholder models to real ones
+    MODEL_ALIASES = {
+        "gpt-5.1": "gpt-4o",  # Fallback to gpt-4o for fictional model
+    }
 
     def __init__(
         self,
@@ -125,6 +131,14 @@ class OpenAIProvider(BaseProvider):
             result.append(converted)
         return result
 
+    def _resolve_model(self, model: str) -> str:
+        """Resolve model aliases to actual API model names."""
+        return self.MODEL_ALIASES.get(model, model)
+
+    def _needs_completion_tokens(self, model: str) -> bool:
+        """Check if model requires max_completion_tokens instead of max_tokens."""
+        return any(model.startswith(rm) for rm in self.REASONING_MODELS)
+
     async def complete_async(
         self,
         request: CompletionRequest,
@@ -155,6 +169,28 @@ class OpenAIProvider(BaseProvider):
                 params["presence_penalty"] = request.config.presence_penalty
                 params["stop"] = request.config.stop
 
+        model = self._resolve_model(request.config.model)
+
+        # Build base parameters
+        params: dict[str, Any] = {
+            "model": model,
+            "messages": self._convert_messages(request.messages),
+            "stream": False,
+        }
+
+        # Handle max tokens - newer models use max_completion_tokens
+        if self._needs_completion_tokens(model):
+            params["max_completion_tokens"] = request.config.max_tokens
+        else:
+            params["max_tokens"] = request.config.max_tokens
+            params["temperature"] = request.config.temperature
+            params["top_p"] = request.config.top_p
+            params["frequency_penalty"] = request.config.frequency_penalty
+            params["presence_penalty"] = request.config.presence_penalty
+            if request.config.stop:
+                params["stop"] = request.config.stop
+
+        try:
             response = await self.client.chat.completions.create(**params)
 
             latency_ms = (time.perf_counter() - start_time) * 1000
@@ -223,6 +259,28 @@ class OpenAIProvider(BaseProvider):
                 params["presence_penalty"] = request.config.presence_penalty
                 params["stop"] = request.config.stop
 
+        model = self._resolve_model(request.config.model)
+
+        # Build base parameters
+        params: dict[str, Any] = {
+            "model": model,
+            "messages": self._convert_messages(request.messages),
+            "stream": True,
+        }
+
+        # Handle max tokens - newer models use max_completion_tokens
+        if self._needs_completion_tokens(model):
+            params["max_completion_tokens"] = request.config.max_tokens
+        else:
+            params["max_tokens"] = request.config.max_tokens
+            params["temperature"] = request.config.temperature
+            params["top_p"] = request.config.top_p
+            params["frequency_penalty"] = request.config.frequency_penalty
+            params["presence_penalty"] = request.config.presence_penalty
+            if request.config.stop:
+                params["stop"] = request.config.stop
+
+        try:
             stream = await self.client.chat.completions.create(**params)
 
             async for chunk in stream:

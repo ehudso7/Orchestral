@@ -333,6 +333,23 @@ def create_app() -> FastAPI:
     # Include billing/subscriptions router
     from orchestral.api.subscriptions import router as subscriptions_router
     app.include_router(subscriptions_router)
+    # Mount static files for landing page
+    import os
+    from pathlib import Path
+    from fastapi.staticfiles import StaticFiles
+    from fastapi.responses import FileResponse
+
+    static_dir = Path(__file__).parent.parent / "static"
+    if static_dir.exists():
+        app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
+
+        @app.get("/", include_in_schema=False)
+        async def serve_landing_page():
+            """Serve the landing page."""
+            index_file = static_dir / "index.html"
+            if index_file.exists():
+                return FileResponse(str(index_file))
+            return {"name": "Orchestral API", "version": "3.0.0"}
 
     return app
 
@@ -517,9 +534,9 @@ async def check_budget(api_key: APIKey | None) -> None:
 
 # Routes
 
-@app.get("/")
-async def root() -> dict[str, str]:
-    """Root endpoint."""
+@app.get("/api/info")
+async def api_info() -> dict[str, str]:
+    """API information endpoint."""
     return {
         "name": "Orchestral API",
         "version": "3.0.0",
@@ -1148,6 +1165,221 @@ async def get_metrics(
             # Continue without cache stats to keep metrics endpoint available
 
     return summary
+
+
+# ============================================================================
+# Billing & Payment Endpoints
+# ============================================================================
+
+from orchestral.billing.stripe_integration import (
+    get_stripe_payments,
+    DEFAULT_PLANS,
+    PricingPlan,
+)
+
+
+class CheckoutRequest(BaseModel):
+    """Checkout session request."""
+    email: str = Field(..., description="Customer email")
+    plan_id: str = Field(..., description="Plan to subscribe to")
+    success_url: str = Field(..., description="URL to redirect on success")
+    cancel_url: str = Field(..., description="URL to redirect on cancel")
+    annual: bool = Field(default=False, description="Use annual billing")
+
+
+class CustomerPortalRequest(BaseModel):
+    """Customer portal request."""
+    customer_id: str = Field(..., description="Stripe customer ID")
+    return_url: str = Field(..., description="URL to return to")
+
+
+@app.get("/v1/pricing")
+async def get_pricing() -> dict[str, Any]:
+    """Get pricing plans."""
+    plans = []
+    for plan_id, plan in DEFAULT_PLANS.items():
+        plans.append({
+            "id": plan.id,
+            "name": plan.name,
+            "tier": plan.tier,
+            "price_monthly": plan.price_monthly,
+            "price_yearly": plan.price_yearly,
+            "features": plan.features,
+            "limits": {
+                "requests_per_minute": plan.requests_per_minute,
+                "requests_per_day": plan.requests_per_day,
+                "tokens_per_month": plan.tokens_per_month,
+                "monthly_budget": plan.monthly_budget,
+            },
+        })
+    return {"plans": plans}
+
+
+@app.post("/v1/billing/checkout")
+async def create_checkout(
+    request: CheckoutRequest,
+) -> dict[str, Any]:
+    """Create a Stripe checkout session."""
+    stripe_payments = get_stripe_payments()
+
+    if not stripe_payments.is_configured():
+        raise HTTPException(
+            status_code=503,
+            detail="Payment processing not configured. Set STRIPE_SECRET_KEY.",
+        )
+
+    if request.plan_id not in DEFAULT_PLANS or request.plan_id == "free":
+        raise HTTPException(status_code=400, detail="Invalid plan selected")
+
+    # Create or get customer
+    customer_id = await stripe_payments.create_customer(
+        email=request.email,
+        metadata={"source": "orchestral_api"},
+    )
+
+    if not customer_id:
+        raise HTTPException(status_code=500, detail="Failed to create customer")
+
+    # Create checkout session
+    session = await stripe_payments.create_checkout_session(
+        customer_id=customer_id,
+        plan_id=request.plan_id,
+        success_url=request.success_url,
+        cancel_url=request.cancel_url,
+        annual=request.annual,
+    )
+
+    if not session:
+        raise HTTPException(status_code=500, detail="Failed to create checkout session")
+
+    return {
+        "checkout_url": session["url"],
+        "session_id": session["session_id"],
+        "customer_id": customer_id,
+    }
+
+
+@app.post("/v1/billing/portal")
+async def create_portal(
+    request: CustomerPortalRequest,
+) -> dict[str, Any]:
+    """Create a Stripe billing portal session for self-service."""
+    stripe_payments = get_stripe_payments()
+
+    if not stripe_payments.is_configured():
+        raise HTTPException(
+            status_code=503,
+            detail="Payment processing not configured",
+        )
+
+    portal_url = await stripe_payments.create_billing_portal_session(
+        customer_id=request.customer_id,
+        return_url=request.return_url,
+    )
+
+    if not portal_url:
+        raise HTTPException(status_code=500, detail="Failed to create portal session")
+
+    return {"portal_url": portal_url}
+
+
+@app.post("/v1/billing/webhook")
+async def stripe_webhook(request: Request) -> dict[str, str]:
+    """Handle Stripe webhook events."""
+    stripe_payments = get_stripe_payments()
+
+    if not stripe_payments.is_configured():
+        raise HTTPException(status_code=503, detail="Stripe not configured")
+
+    # Get the raw body and signature
+    payload = await request.body()
+    sig_header = request.headers.get("stripe-signature")
+
+    if not sig_header:
+        raise HTTPException(status_code=400, detail="Missing Stripe signature")
+
+    # Verify webhook
+    event = stripe_payments.verify_webhook(payload, sig_header)
+    if not event:
+        raise HTTPException(status_code=400, detail="Invalid webhook signature")
+
+    # Handle the event
+    result = await stripe_payments.handle_webhook_event(
+        event["type"],
+        event["data"],
+    )
+
+    # Process subscription changes
+    if result.get("action") == "activate_subscription":
+        # Create API key for new subscriber
+        if api_key_manager:
+            plan_id = result.get("plan_id", "starter")
+            plan = DEFAULT_PLANS.get(plan_id)
+            tier = plan.tier if plan else "STARTER"
+
+            key_data = api_key_manager.create_key(
+                name=f"subscription-{result['customer_id']}",
+                tier=tier,
+                owner_id=result["customer_id"],
+                metadata={
+                    "subscription_id": result["subscription_id"],
+                    "plan_id": plan_id,
+                },
+            )
+            logger.info(
+                "Created API key for new subscriber",
+                customer_id=result["customer_id"],
+                key_id=key_data["key_id"],
+            )
+
+    elif result.get("action") == "subscription_canceled":
+        # Revoke API key for canceled subscription
+        if api_key_manager:
+            # Find and revoke keys for this customer
+            keys = api_key_manager.list_keys(owner_id=result["customer_id"])
+            for key in keys:
+                api_key_manager.revoke_key(key["key_id"])
+            logger.info(
+                "Revoked API keys for canceled subscription",
+                customer_id=result["customer_id"],
+                keys_revoked=len(keys),
+            )
+
+    return {"status": "received"}
+
+
+@app.get("/v1/billing/subscription/{customer_id}")
+async def get_subscription_status(
+    customer_id: str,
+    _: bool = Depends(verify_admin_key),
+) -> dict[str, Any]:
+    """Get subscription status for a customer (admin only)."""
+    stripe_payments = get_stripe_payments()
+
+    if not stripe_payments.is_configured():
+        raise HTTPException(status_code=503, detail="Stripe not configured")
+
+    # Find API keys for this customer
+    keys = []
+    if api_key_manager:
+        keys = api_key_manager.list_keys(owner_id=customer_id)
+
+    # Get usage for each key
+    usage_data = []
+    if usage_tracker and keys:
+        for key in keys:
+            usage = await usage_tracker.get_current_period_usage(key["key_id"])
+            usage_data.append({
+                "key_id": key["key_id"],
+                "name": key["name"],
+                "tier": key["tier"],
+                "usage": usage,
+            })
+
+    return {
+        "customer_id": customer_id,
+        "api_keys": usage_data,
+    }
 
 
 def run_server(
