@@ -37,12 +37,20 @@ class OpenAIProvider(BaseProvider):
     OpenAI provider for ChatGPT models.
 
     Supports:
-    - GPT-5.1 (flagship with adaptive reasoning)
     - GPT-4o (standard multimodal)
     - GPT-4o-mini (fast and cost-effective)
+    - o1/o3 series (reasoning models)
     """
 
     provider = ModelProvider.OPENAI
+
+    # Models that require max_completion_tokens instead of max_tokens
+    REASONING_MODELS = {"o1", "o1-mini", "o1-preview", "o3", "o3-mini", "gpt-5.1"}
+
+    # Map fictional/placeholder models to real ones
+    MODEL_ALIASES = {
+        "gpt-5.1": "gpt-4o",  # Fallback to gpt-4o for fictional model
+    }
 
     def __init__(
         self,
@@ -110,26 +118,43 @@ class OpenAIProvider(BaseProvider):
             result.append(converted)
         return result
 
+    def _resolve_model(self, model: str) -> str:
+        """Resolve model aliases to actual API model names."""
+        return self.MODEL_ALIASES.get(model, model)
+
+    def _needs_completion_tokens(self, model: str) -> bool:
+        """Check if model requires max_completion_tokens instead of max_tokens."""
+        return any(model.startswith(rm) for rm in self.REASONING_MODELS)
+
     async def complete_async(
         self,
         request: CompletionRequest,
     ) -> CompletionResponse:
         """Generate a completion using OpenAI."""
         start_time = time.perf_counter()
-        model = request.config.model
+        model = self._resolve_model(request.config.model)
+
+        # Build base parameters
+        params: dict[str, Any] = {
+            "model": model,
+            "messages": self._convert_messages(request.messages),
+            "stream": False,
+        }
+
+        # Handle max tokens - newer models use max_completion_tokens
+        if self._needs_completion_tokens(model):
+            params["max_completion_tokens"] = request.config.max_tokens
+        else:
+            params["max_tokens"] = request.config.max_tokens
+            params["temperature"] = request.config.temperature
+            params["top_p"] = request.config.top_p
+            params["frequency_penalty"] = request.config.frequency_penalty
+            params["presence_penalty"] = request.config.presence_penalty
+            if request.config.stop:
+                params["stop"] = request.config.stop
 
         try:
-            response = await self.client.chat.completions.create(
-                model=model,
-                messages=self._convert_messages(request.messages),
-                temperature=request.config.temperature,
-                max_tokens=request.config.max_tokens,
-                top_p=request.config.top_p,
-                frequency_penalty=request.config.frequency_penalty,
-                presence_penalty=request.config.presence_penalty,
-                stop=request.config.stop,
-                stream=False,
-            )
+            response = await self.client.chat.completions.create(**params)
 
             latency_ms = (time.perf_counter() - start_time) * 1000
 
@@ -174,20 +199,29 @@ class OpenAIProvider(BaseProvider):
         request: CompletionRequest,
     ) -> AsyncIterator[str]:
         """Stream a completion from OpenAI."""
-        model = request.config.model
+        model = self._resolve_model(request.config.model)
+
+        # Build base parameters
+        params: dict[str, Any] = {
+            "model": model,
+            "messages": self._convert_messages(request.messages),
+            "stream": True,
+        }
+
+        # Handle max tokens - newer models use max_completion_tokens
+        if self._needs_completion_tokens(model):
+            params["max_completion_tokens"] = request.config.max_tokens
+        else:
+            params["max_tokens"] = request.config.max_tokens
+            params["temperature"] = request.config.temperature
+            params["top_p"] = request.config.top_p
+            params["frequency_penalty"] = request.config.frequency_penalty
+            params["presence_penalty"] = request.config.presence_penalty
+            if request.config.stop:
+                params["stop"] = request.config.stop
 
         try:
-            stream = await self.client.chat.completions.create(
-                model=model,
-                messages=self._convert_messages(request.messages),
-                temperature=request.config.temperature,
-                max_tokens=request.config.max_tokens,
-                top_p=request.config.top_p,
-                frequency_penalty=request.config.frequency_penalty,
-                presence_penalty=request.config.presence_penalty,
-                stop=request.config.stop,
-                stream=True,
-            )
+            stream = await self.client.chat.completions.create(**params)
 
             async for chunk in stream:
                 if chunk.choices and chunk.choices[0].delta.content:

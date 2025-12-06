@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Orchestral - AI Model Orchestration Platform</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#6366f1',
+                        secondary: '#8b5cf6',
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-gray-900 text-white">
+    <!-- Hero Section -->
+    <header class="relative overflow-hidden">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
+            <div class="text-center">
+                <h1 class="text-5xl md:text-6xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent mb-6">
+                    Orchestral
+                </h1>
+                <p class="text-xl md:text-2xl text-gray-300 mb-8 max-w-3xl mx-auto">
+                    Unified API for ChatGPT, Claude, and Gemini with intelligent routing,
+                    parallel comparison, and enterprise-grade reliability.
+                </p>
+                <div class="flex justify-center gap-4">
+                    <a href="#pricing" class="bg-primary hover:bg-indigo-600 text-white px-8 py-3 rounded-lg font-semibold transition">
+                        Get Started
+                    </a>
+                    <a href="/docs" class="border border-gray-600 hover:border-gray-400 text-white px-8 py-3 rounded-lg font-semibold transition">
+                        View API Docs
+                    </a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Features Section -->
+    <section class="py-20 bg-gray-800">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <h2 class="text-3xl font-bold text-center mb-12">Why Orchestral?</h2>
+            <div class="grid md:grid-cols-3 gap-8">
+                <div class="bg-gray-700 p-6 rounded-xl">
+                    <div class="text-4xl mb-4">&#9889;</div>
+                    <h3 class="text-xl font-semibold mb-2">Intelligent Routing</h3>
+                    <p class="text-gray-400">Automatically route requests to the best model for each task. Optimize for speed, cost, or quality.</p>
+                </div>
+                <div class="bg-gray-700 p-6 rounded-xl">
+                    <div class="text-4xl mb-4">&#128202;</div>
+                    <h3 class="text-xl font-semibold mb-2">Model Comparison</h3>
+                    <p class="text-gray-400">Query multiple models in parallel and compare responses with built-in evaluation metrics.</p>
+                </div>
+                <div class="bg-gray-700 p-6 rounded-xl">
+                    <div class="text-4xl mb-4">&#128274;</div>
+                    <h3 class="text-xl font-semibold mb-2">Enterprise Ready</h3>
+                    <p class="text-gray-400">Rate limiting, usage tracking, budget controls, and semantic caching built-in.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Supported Models -->
+    <section class="py-20">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <h2 class="text-3xl font-bold text-center mb-12">Supported Models</h2>
+            <div class="grid md:grid-cols-3 gap-8">
+                <div class="text-center">
+                    <div class="text-5xl mb-4">&#127919;</div>
+                    <h3 class="text-xl font-semibold mb-2">OpenAI</h3>
+                    <p class="text-gray-400">GPT-4o, GPT-4o Mini</p>
+                </div>
+                <div class="text-center">
+                    <div class="text-5xl mb-4">&#129302;</div>
+                    <h3 class="text-xl font-semibold mb-2">Anthropic</h3>
+                    <p class="text-gray-400">Claude Opus, Sonnet, Haiku</p>
+                </div>
+                <div class="text-center">
+                    <div class="text-5xl mb-4">&#128142;</div>
+                    <h3 class="text-xl font-semibold mb-2">Google</h3>
+                    <p class="text-gray-400">Gemini 2.5 Pro & Flash</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Pricing Section -->
+    <section id="pricing" class="py-20 bg-gray-800">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <h2 class="text-3xl font-bold text-center mb-4">Simple, Transparent Pricing</h2>
+            <p class="text-gray-400 text-center mb-12">Pay only for what you use. No hidden fees.</p>
+
+            <div class="grid md:grid-cols-4 gap-6" id="pricing-cards">
+                <!-- Pricing cards will be loaded dynamically -->
+            </div>
+        </div>
+    </section>
+
+    <!-- Code Example -->
+    <section class="py-20">
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+            <h2 class="text-3xl font-bold text-center mb-12">Simple Integration</h2>
+            <div class="bg-gray-800 rounded-xl p-6 overflow-x-auto">
+                <pre class="text-sm"><code class="text-green-400">import</code> <code class="text-blue-400">asyncio</code>
+<code class="text-green-400">from</code> <code class="text-blue-400">orchestral</code> <code class="text-green-400">import</code> <code class="text-yellow-400">Orchestrator</code>
+
+<code class="text-green-400">async def</code> <code class="text-blue-400">main</code>():
+    orch = <code class="text-yellow-400">Orchestrator</code>()
+
+    <code class="text-gray-500"># Simple completion</code>
+    response = <code class="text-green-400">await</code> orch.complete(
+        <code class="text-orange-400">"Explain quantum computing"</code>,
+        model=<code class="text-orange-400">"gpt-4o"</code>
+    )
+
+    <code class="text-gray-500"># Compare multiple models</code>
+    comparison = <code class="text-green-400">await</code> orch.compare(
+        <code class="text-orange-400">"Write a haiku about AI"</code>,
+        models=[<code class="text-orange-400">"gpt-4o"</code>, <code class="text-orange-400">"claude-sonnet-4-5-20250929"</code>]
+    )
+
+asyncio.run(main())</pre>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="py-20 bg-gradient-to-r from-primary to-secondary">
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h2 class="text-3xl font-bold mb-4">Ready to Get Started?</h2>
+            <p class="text-xl mb-8 opacity-90">Join developers who are building the next generation of AI applications.</p>
+            <a href="#pricing" class="bg-white text-primary px-8 py-3 rounded-lg font-semibold hover:bg-gray-100 transition">
+                Start Free Trial
+            </a>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="py-12 bg-gray-900 border-t border-gray-800">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center">
+                <div class="text-2xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+                    Orchestral
+                </div>
+                <div class="flex gap-6">
+                    <a href="/docs" class="text-gray-400 hover:text-white">API Docs</a>
+                    <a href="https://github.com/ehudso7/Orchestral" class="text-gray-400 hover:text-white">GitHub</a>
+                    <a href="/v1/pricing" class="text-gray-400 hover:text-white">Pricing API</a>
+                </div>
+            </div>
+            <div class="mt-8 text-center text-gray-500 text-sm">
+                &copy; 2025 Orchestral. All rights reserved.
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Load pricing from API
+        async function loadPricing() {
+            try {
+                const response = await fetch('/v1/pricing');
+                const data = await response.json();
+                renderPricing(data.plans);
+            } catch (error) {
+                console.error('Failed to load pricing:', error);
+                renderFallbackPricing();
+            }
+        }
+
+        function renderPricing(plans) {
+            const container = document.getElementById('pricing-cards');
+            container.innerHTML = plans.map((plan, index) => `
+                <div class="bg-gray-700 rounded-xl p-6 ${plan.id === 'pro' ? 'ring-2 ring-primary' : ''}">
+                    ${plan.id === 'pro' ? '<div class="text-primary text-sm font-semibold mb-2">MOST POPULAR</div>' : ''}
+                    <h3 class="text-xl font-bold mb-2">${plan.name}</h3>
+                    <div class="text-3xl font-bold mb-1">
+                        $${plan.price_monthly}<span class="text-lg text-gray-400">/mo</span>
+                    </div>
+                    <p class="text-gray-400 text-sm mb-6">or $${plan.price_yearly}/year</p>
+                    <ul class="space-y-3 mb-6">
+                        ${plan.features.map(f => `
+                            <li class="flex items-center text-sm">
+                                <span class="text-green-400 mr-2">&#10003;</span>
+                                ${f}
+                            </li>
+                        `).join('')}
+                    </ul>
+                    <button onclick="startCheckout('${plan.id}')"
+                            class="w-full ${plan.id === 'free' ? 'bg-gray-600 hover:bg-gray-500' : 'bg-primary hover:bg-indigo-600'} py-2 rounded-lg font-semibold transition">
+                        ${plan.id === 'free' ? 'Get Started' : 'Subscribe'}
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        function renderFallbackPricing() {
+            const plans = [
+                { id: 'free', name: 'Free', price_monthly: 0, price_yearly: 0, features: ['100K tokens/month', '10 req/min', 'Community support'] },
+                { id: 'starter', name: 'Starter', price_monthly: 29, price_yearly: 290, features: ['1M tokens/month', '60 req/min', 'All models', 'Email support'] },
+                { id: 'pro', name: 'Pro', price_monthly: 99, price_yearly: 990, features: ['10M tokens/month', '300 req/min', 'Priority support', 'Semantic caching'] },
+                { id: 'enterprise', name: 'Enterprise', price_monthly: 499, price_yearly: 4990, features: ['100M tokens/month', '1000 req/min', '24/7 support', 'SLA guarantee'] },
+            ];
+            renderPricing(plans);
+        }
+
+        async function startCheckout(planId) {
+            if (planId === 'free') {
+                window.location.href = '/docs';
+                return;
+            }
+
+            const email = prompt('Enter your email to get started:');
+            if (!email) return;
+
+            try {
+                const response = await fetch('/v1/billing/checkout', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: email,
+                        plan_id: planId,
+                        success_url: window.location.origin + '/success',
+                        cancel_url: window.location.origin + '#pricing',
+                    }),
+                });
+
+                const data = await response.json();
+                if (data.checkout_url) {
+                    window.location.href = data.checkout_url;
+                } else {
+                    alert('Failed to start checkout: ' + (data.detail || 'Unknown error'));
+                }
+            } catch (error) {
+                alert('Payment processing not configured yet. Contact support.');
+            }
+        }
+
+        // Load pricing on page load
+        loadPricing();
+    </script>
+</body>
+</html>

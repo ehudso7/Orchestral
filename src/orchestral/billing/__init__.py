@@ -3,6 +3,7 @@ Billing and usage tracking for Orchestral.
 
 Provides commercial-grade API key management, usage metering, billing,
 and Stripe payment integration.
+Provides commercial-grade API key management, usage metering, billing, and payments.
 """
 
 from orchestral.billing.usage import UsageTracker, UsageRecord
@@ -28,6 +29,11 @@ from orchestral.billing.stripe_webhooks import (
     StripeWebhookHandler,
     get_webhook_handler,
     configure_webhook_handler,
+from orchestral.billing.stripe_integration import (
+    StripePayments,
+    get_stripe_payments,
+    DEFAULT_PLANS,
+    PricingPlan,
 )
 
 __all__ = [
@@ -59,4 +65,8 @@ __all__ = [
     "StripeWebhookHandler",
     "get_webhook_handler",
     "configure_webhook_handler",
+    "StripePayments",
+    "get_stripe_payments",
+    "DEFAULT_PLANS",
+    "PricingPlan",
 ]
