@@ -41,8 +41,7 @@ dependencies = [
     "pillow>=10.4.0",
     # Commercial/Scale dependencies
     "redis>=5.0.0",
-    "hiredis>=2.3.0",
-    "cryptography>=41.0.0",
+    "cryptography>=41,<45",
     # Payment processing
     "stripe>=7.0.0",
 ]
