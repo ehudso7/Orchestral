@@ -1,7 +1,10 @@
 {
   "permissions": {
     "allow": [
-      "Bash(git commit -m \"fix: Resolve Vercel deployment issues - all required modules now exist\n\n- Stripe modules (stripe_service.py, stripe_webhooks.py, stripe_models.py) already exist in the codebase\n- Subscriptions router (subscriptions.py) already exists in the api folder\n- All imports in server.py are now valid\n- Vercel deployment should now work correctly\n\nThe 500 error was due to trying to fix non-existent modules when they actually already existed in the codebase.\")"
+      "Bash(git commit -m \"fix: Resolve Vercel deployment issues - all required modules now exist\n\n- Stripe modules (stripe_service.py, stripe_webhooks.py, stripe_models.py) already exist in the codebase\n- Subscriptions router (subscriptions.py) already exists in the api folder\n- All imports in server.py are now valid\n- Vercel deployment should now work correctly\n\nThe 500 error was due to trying to fix non-existent modules when they actually already existed in the codebase.\")",
+      "Bash(python -c \"from orchestral.api.server import app; print(''Import successful'')\")",
+      "Bash(python3 -c \"from orchestral.api.server import app; print(''Import successful'')\")",
+      "Bash(git commit -m \"fix: Correct syntax error in billing __init__.py\n\n- Fixed unclosed parenthesis on line 28\n- Removed duplicate import statement for non-existent stripe_integration module\n- Cleaned up duplicate docstring line\n- Server can now start successfully\")"
     ],
     "deny": [],
     "ask": []
