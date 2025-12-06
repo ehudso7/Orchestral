@@ -119,7 +119,15 @@ def hash_password(password: str) -> str:
     else:
         password = password
 
-    return pwd_context.hash(password)
+    # Try to hash, and if it still fails, truncate more aggressively
+    try:
+        return pwd_context.hash(password)
+    except Exception as e:
+        if "72 bytes" in str(e):
+            # Emergency truncation - just use first 20 chars
+            logger.error(f"BCrypt still failed after truncation, using emergency truncation: {e}")
+            return pwd_context.hash(password[:20])
+        raise
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
@@ -206,6 +214,23 @@ async def signup(request: UserSignup):
                 detail="Email already registered",
             )
 
+        # Truncate password if needed BEFORE hashing
+        # This ensures we never pass a too-long password to bcrypt
+        password = request.password
+        password_bytes = password.encode('utf-8')
+        if len(password_bytes) > 71:
+            logger.warning(f"Password truncated from {len(password_bytes)} to 71 bytes")
+            # Truncate at 71 bytes and find last complete UTF-8 character
+            password_bytes = password_bytes[:71]
+            while len(password_bytes) > 0:
+                try:
+                    password = password_bytes.decode('utf-8')
+                    break
+                except UnicodeDecodeError:
+                    password_bytes = password_bytes[:-1]
+            if len(password_bytes) == 0:
+                password = request.password[:20]  # Fallback
+
         # Create user
         user_id = f"user_{secrets.token_urlsafe(16)}"
         user = {
@@ -213,7 +238,7 @@ async def signup(request: UserSignup):
             "email": request.email,
             "full_name": request.full_name,
             "company": request.company,
-            "password_hash": hash_password(request.password),
+            "password_hash": hash_password(password),  # Use truncated password
             "created_at": datetime.now(timezone.utc).isoformat(),
             "api_key_id": None,
             "subscription_status": None,
@@ -268,6 +293,21 @@ async def login(request: UserLogin):
 
     Returns a JWT token for API access.
     """
+    # Truncate password if needed (same as signup)
+    password = request.password
+    password_bytes = password.encode('utf-8')
+    if len(password_bytes) > 71:
+        # Truncate at 71 bytes and find last complete UTF-8 character
+        password_bytes = password_bytes[:71]
+        while len(password_bytes) > 0:
+            try:
+                password = password_bytes.decode('utf-8')
+                break
+            except UnicodeDecodeError:
+                password_bytes = password_bytes[:-1]
+        if len(password_bytes) == 0:
+            password = request.password[:20]  # Fallback
+
     # Find user by email
     user = None
     for u in users_db.values():
@@ -275,7 +315,7 @@ async def login(request: UserLogin):
             user = u
             break
 
-    if not user or not verify_password(request.password, user["password_hash"]):
+    if not user or not verify_password(password, user["password_hash"]):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password",
