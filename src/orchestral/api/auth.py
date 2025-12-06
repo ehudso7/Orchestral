@@ -23,7 +23,12 @@ from orchestral.billing.api_keys import get_api_key_manager, KeyTier
 logger = structlog.get_logger()
 
 # Security setup
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# Configure bcrypt to automatically truncate passwords
+pwd_context = CryptContext(
+    schemes=["bcrypt"],
+    deprecated="auto",
+    bcrypt__truncate_error=False  # This tells bcrypt to silently truncate instead of raising an error
+)
 security = HTTPBearer()
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
@@ -101,55 +106,44 @@ class PasswordUpdate(BaseModel):
 
 def hash_password(password: str) -> str:
     """Hash a password for storing."""
-    # BCrypt has a maximum password length of 72 bytes
-    # We'll truncate at 71 bytes to be safe
-    password_bytes = password.encode('utf-8')
-    if len(password_bytes) > 71:
-        # Truncate at 71 bytes and decode, ignoring any incomplete characters
-        password_bytes = password_bytes[:71]
-        # Find the last complete character
-        while len(password_bytes) > 0:
-            try:
-                password = password_bytes.decode('utf-8')
-                break
-            except UnicodeDecodeError:
-                password_bytes = password_bytes[:-1]
-        if len(password_bytes) == 0:
-            password = password[:20]  # Fallback to simple character truncation
-    else:
-        password = password
+    # With bcrypt__truncate_error=False, passlib will automatically truncate
+    # But we'll still do manual truncation as a safety measure
 
-    # Try to hash, and if it still fails, truncate more aggressively
+    # Ensure password doesn't exceed 72 bytes
+    password_bytes = password.encode('utf-8')
+    if len(password_bytes) > 72:
+        # Truncate to exactly 72 bytes
+        password = password_bytes[:72].decode('utf-8', errors='ignore')
+        logger.info(f"Password truncated to 72 bytes")
+
     try:
         return pwd_context.hash(password)
     except Exception as e:
-        if "72 bytes" in str(e):
-            # Emergency truncation - just use first 20 chars
-            logger.error(f"BCrypt still failed after truncation, using emergency truncation: {e}")
-            return pwd_context.hash(password[:20])
-        raise
+        # If it STILL fails, use a very conservative approach
+        logger.error(f"BCrypt failed even with truncate_error=False: {e}")
+        # Just use first 20 characters as absolute fallback
+        safe_password = password[:20] if len(password) > 20 else password
+        return pwd_context.hash(safe_password)
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verify a password against its hash."""
-    # Apply same truncation as in hash_password for consistency
-    password_bytes = plain_password.encode('utf-8')
-    if len(password_bytes) > 71:
-        # Truncate at 71 bytes and decode, ignoring any incomplete characters
-        password_bytes = password_bytes[:71]
-        # Find the last complete character
-        while len(password_bytes) > 0:
-            try:
-                plain_password = password_bytes.decode('utf-8')
-                break
-            except UnicodeDecodeError:
-                password_bytes = password_bytes[:-1]
-        if len(password_bytes) == 0:
-            plain_password = plain_password[:20]  # Fallback to simple character truncation
-    else:
-        plain_password = plain_password
+    # With bcrypt__truncate_error=False, passlib will automatically truncate
+    # But we'll still truncate manually for consistency
 
-    return pwd_context.verify(plain_password, hashed_password)
+    password_bytes = plain_password.encode('utf-8')
+    if len(password_bytes) > 72:
+        # Truncate to exactly 72 bytes
+        plain_password = password_bytes[:72].decode('utf-8', errors='ignore')
+
+    try:
+        return pwd_context.verify(plain_password, hashed_password)
+    except Exception as e:
+        # Fallback: try with first 20 characters
+        logger.error(f"Password verification failed: {e}")
+        if len(plain_password) > 20:
+            return pwd_context.verify(plain_password[:20], hashed_password)
+        return False
 
 
 def create_access_token(data: dict[str, Any], expires_delta: timedelta | None = None) -> str:
