@@ -46,6 +46,9 @@ dependencies = [
     # Commercial/Scale dependencies
     "redis>=5.0.0",
     "cryptography>=41,<45",
+    # Authentication dependencies
+    "passlib[bcrypt]>=1.7.4",
+    "PyJWT>=2.8.0",
     # Payment processing (7.x pinned - upgrading to 8.x+ requires API refactoring)
     "stripe>=7,<8",
 ]

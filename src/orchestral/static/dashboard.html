@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Orchestral</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://js.stripe.com/v3/"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Navigation -->
+    <nav class="bg-white shadow-lg">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <h1 class="text-2xl font-bold gradient-bg bg-clip-text text-transparent">Orchestral</h1>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <button class="text-gray-600 hover:text-gray-900">
+                        <i class="fas fa-bell"></i>
+                    </button>
+                    <div class="relative">
+                        <button onclick="toggleUserMenu()" class="flex items-center space-x-2 text-gray-700 hover:text-gray-900">
+                            <i class="fas fa-user-circle text-2xl"></i>
+                            <span id="userName">User</span>
+                            <i class="fas fa-chevron-down text-sm"></i>
+                        </button>
+                        <div id="userMenu" class="hidden absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl py-2">
+                            <a href="#profile" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">
+                                <i class="fas fa-user mr-2"></i> Profile
+                            </a>
+                            <a href="#billing" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">
+                                <i class="fas fa-credit-card mr-2"></i> Billing
+                            </a>
+                            <hr class="my-2">
+                            <a href="#" onclick="logout()" class="block px-4 py-2 text-red-600 hover:bg-gray-100">
+                                <i class="fas fa-sign-out-alt mr-2"></i> Logout
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="flex h-screen">
+        <!-- Sidebar -->
+        <aside class="w-64 bg-white shadow-lg pt-4">
+            <nav class="mt-4">
+                <a href="#overview" class="sidebar-link active flex items-center px-6 py-3 text-gray-700 hover:bg-purple-50 hover:text-purple-600">
+                    <i class="fas fa-chart-pie mr-3"></i> Overview
+                </a>
+                <a href="#api-keys" class="sidebar-link flex items-center px-6 py-3 text-gray-700 hover:bg-purple-50 hover:text-purple-600">
+                    <i class="fas fa-key mr-3"></i> API Keys
+                </a>
+                <a href="#usage" class="sidebar-link flex items-center px-6 py-3 text-gray-700 hover:bg-purple-50 hover:text-purple-600">
+                    <i class="fas fa-chart-line mr-3"></i> Usage
+                </a>
+                <a href="#billing" class="sidebar-link flex items-center px-6 py-3 text-gray-700 hover:bg-purple-50 hover:text-purple-600">
+                    <i class="fas fa-credit-card mr-3"></i> Billing
+                </a>
+                <a href="#models" class="sidebar-link flex items-center px-6 py-3 text-gray-700 hover:bg-purple-50 hover:text-purple-600">
+                    <i class="fas fa-robot mr-3"></i> Models
+                </a>
+                <a href="#settings" class="sidebar-link flex items-center px-6 py-3 text-gray-700 hover:bg-purple-50 hover:text-purple-600">
+                    <i class="fas fa-cog mr-3"></i> Settings
+                </a>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 p-6 overflow-auto">
+            <!-- Overview Section -->
+            <section id="overview" class="content-section">
+                <h2 class="text-2xl font-bold mb-6">Dashboard Overview</h2>
+
+                <!-- Stats Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                    <div class="bg-white rounded-lg p-6 shadow">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-gray-500 text-sm">API Calls Today</p>
+                                <p class="text-2xl font-bold" id="apiCallsToday">0</p>
+                            </div>
+                            <i class="fas fa-exchange-alt text-purple-600 text-3xl"></i>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-lg p-6 shadow">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-gray-500 text-sm">Tokens Used</p>
+                                <p class="text-2xl font-bold" id="tokensUsed">0</p>
+                            </div>
+                            <i class="fas fa-coins text-green-600 text-3xl"></i>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-lg p-6 shadow">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-gray-500 text-sm">Current Tier</p>
+                                <p class="text-2xl font-bold" id="currentTier">Free</p>
+                            </div>
+                            <i class="fas fa-layer-group text-blue-600 text-3xl"></i>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-lg p-6 shadow">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-gray-500 text-sm">Monthly Cost</p>
+                                <p class="text-2xl font-bold" id="monthlyCost">$0</p>
+                            </div>
+                            <i class="fas fa-dollar-sign text-yellow-600 text-3xl"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Usage Chart -->
+                <div class="bg-white rounded-lg p-6 shadow mb-8">
+                    <h3 class="text-lg font-semibold mb-4">Usage Over Time</h3>
+                    <canvas id="usageChart" width="400" height="100"></canvas>
+                </div>
+            </section>
+
+            <!-- API Keys Section -->
+            <section id="api-keys" class="content-section hidden">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold">API Keys</h2>
+                    <button onclick="showCreateKeyModal()" class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700">
+                        <i class="fas fa-plus mr-2"></i> Create New Key
+                    </button>
+                </div>
+
+                <div class="bg-white rounded-lg shadow">
+                    <table class="w-full">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Key</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Created</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Last Used</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="apiKeysTable">
+                            <!-- Keys will be loaded here -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Billing Section -->
+            <section id="billing" class="content-section hidden">
+                <h2 class="text-2xl font-bold mb-6">Billing & Subscription</h2>
+
+                <!-- Current Plan Card -->
+                <div class="bg-white rounded-lg p-6 shadow mb-6">
+                    <h3 class="text-lg font-semibold mb-4">Current Plan</h3>
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-2xl font-bold" id="planName">Free</p>
+                            <p class="text-gray-500" id="planDetails">100K tokens/month • 10 req/min</p>
+                        </div>
+                        <button onclick="changePlan()" class="bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-700">
+                            Upgrade Plan
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Payment Method Card -->
+                <div class="bg-white rounded-lg p-6 shadow mb-6">
+                    <h3 class="text-lg font-semibold mb-4">Payment Method</h3>
+                    <div id="paymentMethodSection">
+                        <!-- Payment method will be loaded here -->
+                    </div>
+                    <button onclick="addPaymentMethod()" class="mt-4 text-purple-600 hover:text-purple-700">
+                        <i class="fas fa-plus mr-2"></i> Add Payment Method
+                    </button>
+                </div>
+
+                <!-- Invoices -->
+                <div class="bg-white rounded-lg p-6 shadow">
+                    <h3 class="text-lg font-semibold mb-4">Invoices</h3>
+                    <table class="w-full">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Download</th>
+                            </tr>
+                        </thead>
+                        <tbody id="invoicesTable">
+                            <!-- Invoices will be loaded here -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Create API Key Modal -->
+    <div id="createKeyModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+        <div class="bg-white rounded-lg p-6 w-full max-w-md">
+            <h3 class="text-xl font-semibold mb-4">Create New API Key</h3>
+            <form onsubmit="createApiKey(event)">
+                <input
+                    type="text"
+                    name="keyName"
+                    placeholder="Key name (e.g., Production Key)"
+                    required
+                    class="w-full px-4 py-2 border rounded-lg mb-4"
+                >
+                <div class="flex justify-end space-x-2">
+                    <button type="button" onclick="hideCreateKeyModal()" class="px-4 py-2 text-gray-600 hover:text-gray-800">
+                        Cancel
+                    </button>
+                    <button type="submit" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700">
+                        Create Key
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Key Created Modal -->
+    <div id="keyCreatedModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+        <div class="bg-white rounded-lg p-6 w-full max-w-md">
+            <h3 class="text-xl font-semibold mb-4">API Key Created</h3>
+            <div class="bg-yellow-50 p-4 rounded-lg mb-4">
+                <p class="text-sm text-yellow-800 mb-2">
+                    <i class="fas fa-exclamation-triangle mr-2"></i>
+                    Save this key now. You won't be able to see it again!
+                </p>
+                <div class="bg-gray-100 p-2 rounded font-mono text-sm break-all" id="newApiKey">
+                    <!-- Key will be shown here -->
+                </div>
+            </div>
+            <button onclick="copyApiKey()" class="w-full px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700">
+                <i class="fas fa-copy mr-2"></i> Copy Key
+            </button>
+            <button onclick="hideKeyCreatedModal()" class="w-full mt-2 px-4 py-2 text-gray-600 hover:text-gray-800">
+                Done
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Configuration
+        const API_BASE = window.location.origin;
+        const stripe = Stripe('pk_test_...'); // Add your Stripe public key
+
+        // Check authentication
+        const token = localStorage.getItem('orchestral_token');
+        const user = JSON.parse(localStorage.getItem('orchestral_user') || '{}');
+
+        if (!token) {
+            window.location.href = '/auth';
+        }
+
+        // Set up axios defaults
+        axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', async () => {
+            document.getElementById('userName').textContent = user.full_name || user.email;
+            await loadDashboardData();
+            setupNavigation();
+        });
+
+        // Navigation
+        function setupNavigation() {
+            const links = document.querySelectorAll('.sidebar-link');
+            links.forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const target = e.currentTarget.getAttribute('href').substring(1);
+                    showSection(target);
+
+                    links.forEach(l => l.classList.remove('active', 'bg-purple-50', 'text-purple-600'));
+                    e.currentTarget.classList.add('active', 'bg-purple-50', 'text-purple-600');
+                });
+            });
+        }
+
+        function showSection(sectionId) {
+            document.querySelectorAll('.content-section').forEach(section => {
+                section.classList.add('hidden');
+            });
+            const targetSection = document.getElementById(sectionId);
+            if (targetSection) {
+                targetSection.classList.remove('hidden');
+
+                // Load section-specific data
+                switch(sectionId) {
+                    case 'api-keys':
+                        loadApiKeys();
+                        break;
+                    case 'billing':
+                        loadBillingInfo();
+                        break;
+                    case 'usage':
+                        loadUsageData();
+                        break;
+                }
+            }
+        }
+
+        // Load dashboard data
+        async function loadDashboardData() {
+            try {
+                // Load usage stats
+                const usage = await axios.get(`${API_BASE}/v1/usage`, {
+                    headers: { 'X-Api-Key': user.api_key }
+                });
+
+                document.getElementById('apiCallsToday').textContent = usage.data.requests_today || 0;
+                document.getElementById('tokensUsed').textContent = formatNumber(usage.data.tokens_used || 0);
+                document.getElementById('currentTier').textContent = usage.data.tier || 'Free';
+                document.getElementById('monthlyCost').textContent = `$${usage.data.cost_usd || 0}`;
+
+                // Load usage chart
+                loadUsageChart();
+            } catch (error) {
+                console.error('Failed to load dashboard data:', error);
+            }
+        }
+
+        // Load usage chart
+        function loadUsageChart() {
+            const ctx = document.getElementById('usageChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                    datasets: [{
+                        label: 'API Calls',
+                        data: [65, 59, 80, 81, 56, 55, 40],
+                        borderColor: 'rgb(102, 126, 234)',
+                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+
+        // API Keys Management
+        async function loadApiKeys() {
+            try {
+                const response = await axios.get(`${API_BASE}/auth/api-keys`);
+                const tbody = document.getElementById('apiKeysTable');
+
+                tbody.innerHTML = response.data.keys.map(key => `
+                    <tr>
+                        <td class="px-6 py-4">${key.name}</td>
+                        <td class="px-6 py-4">
+                            <code class="text-sm bg-gray-100 px-2 py-1 rounded">
+                                orch-****${key.key_id.slice(-8)}
+                            </code>
+                        </td>
+                        <td class="px-6 py-4 text-sm text-gray-500">${formatDate(key.created_at)}</td>
+                        <td class="px-6 py-4 text-sm text-gray-500">${key.last_used ? formatDate(key.last_used) : 'Never'}</td>
+                        <td class="px-6 py-4">
+                            <button onclick="revokeKey('${key.key_id}')" class="text-red-600 hover:text-red-700">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `).join('');
+            } catch (error) {
+                console.error('Failed to load API keys:', error);
+            }
+        }
+
+        async function createApiKey(event) {
+            event.preventDefault();
+            const formData = new FormData(event.target);
+
+            try {
+                const response = await axios.post(`${API_BASE}/auth/api-keys`, {
+                    name: formData.get('keyName')
+                });
+
+                document.getElementById('newApiKey').textContent = response.data.key;
+                hideCreateKeyModal();
+                document.getElementById('keyCreatedModal').classList.remove('hidden');
+
+                // Reload keys list
+                await loadApiKeys();
+            } catch (error) {
+                alert('Failed to create API key: ' + error.response?.data?.detail);
+            }
+        }
+
+        function copyApiKey() {
+            const keyText = document.getElementById('newApiKey').textContent;
+            navigator.clipboard.writeText(keyText);
+            alert('API key copied to clipboard!');
+        }
+
+        async function revokeKey(keyId) {
+            if (!confirm('Are you sure you want to revoke this API key?')) return;
+
+            try {
+                await axios.delete(`${API_BASE}/auth/api-keys/${keyId}`);
+                await loadApiKeys();
+            } catch (error) {
+                alert('Failed to revoke key: ' + error.response?.data?.detail);
+            }
+        }
+
+        // Billing Management
+        async function loadBillingInfo() {
+            try {
+                const response = await axios.get(`${API_BASE}/billing/status`, {
+                    headers: { 'X-Api-Key': user.api_key }
+                });
+
+                document.getElementById('planName').textContent = response.data.current_tier || 'Free';
+
+                // Load payment methods
+                if (response.data.has_customer) {
+                    const methods = await axios.get(`${API_BASE}/billing/payment-methods`, {
+                        headers: { 'X-Api-Key': user.api_key }
+                    });
+
+                    const paymentSection = document.getElementById('paymentMethodSection');
+                    if (methods.data.length > 0) {
+                        paymentSection.innerHTML = methods.data.map(pm => `
+                            <div class="flex items-center justify-between p-3 border rounded-lg">
+                                <div>
+                                    <i class="fab fa-cc-${pm.card_brand?.toLowerCase()} mr-2"></i>
+                                    •••• ${pm.card_last4}
+                                </div>
+                                <button onclick="removePaymentMethod('${pm.payment_method_id}')" class="text-red-600">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        `).join('');
+                    } else {
+                        paymentSection.innerHTML = '<p class="text-gray-500">No payment methods on file</p>';
+                    }
+                }
+
+                // Load invoices
+                const invoices = await axios.get(`${API_BASE}/billing/invoices`, {
+                    headers: { 'X-Api-Key': user.api_key }
+                });
+
+                const invoicesTable = document.getElementById('invoicesTable');
+                if (invoices.data.length > 0) {
+                    invoicesTable.innerHTML = invoices.data.map(inv => `
+                        <tr>
+                            <td class="px-6 py-4">${formatDate(inv.created_at)}</td>
+                            <td class="px-6 py-4">$${(inv.amount_paid / 100).toFixed(2)}</td>
+                            <td class="px-6 py-4">
+                                <span class="px-2 py-1 text-xs rounded-full ${
+                                    inv.status === 'paid' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                                }">
+                                    ${inv.status}
+                                </span>
+                            </td>
+                            <td class="px-6 py-4">
+                                ${inv.invoice_pdf ? `<a href="${inv.invoice_pdf}" target="_blank" class="text-purple-600 hover:text-purple-700">
+                                    <i class="fas fa-download"></i>
+                                </a>` : '-'}
+                            </td>
+                        </tr>
+                    `).join('');
+                } else {
+                    invoicesTable.innerHTML = '<tr><td colspan="4" class="text-center py-4 text-gray-500">No invoices yet</td></tr>';
+                }
+            } catch (error) {
+                console.error('Failed to load billing info:', error);
+            }
+        }
+
+        async function changePlan() {
+            window.location.href = '/#pricing';
+        }
+
+        async function addPaymentMethod() {
+            // Create setup intent for adding card
+            try {
+                const response = await axios.post(`${API_BASE}/billing/payment-methods/setup`, {}, {
+                    headers: { 'X-Api-Key': user.api_key }
+                });
+
+                // Use Stripe Elements to collect card details
+                const result = await stripe.confirmCardSetup(response.data.client_secret, {
+                    payment_method: {
+                        card: cardElement, // You'd need to set up Stripe Elements
+                    }
+                });
+
+                if (result.error) {
+                    alert('Failed to add payment method: ' + result.error.message);
+                } else {
+                    await loadBillingInfo();
+                }
+            } catch (error) {
+                alert('Failed to setup payment method: ' + error.response?.data?.detail);
+            }
+        }
+
+        // Modal functions
+        function showCreateKeyModal() {
+            document.getElementById('createKeyModal').classList.remove('hidden');
+        }
+
+        function hideCreateKeyModal() {
+            document.getElementById('createKeyModal').classList.add('hidden');
+        }
+
+        function hideKeyCreatedModal() {
+            document.getElementById('keyCreatedModal').classList.add('hidden');
+        }
+
+        function toggleUserMenu() {
+            document.getElementById('userMenu').classList.toggle('hidden');
+        }
+
+        function logout() {
+            localStorage.removeItem('orchestral_token');
+            localStorage.removeItem('orchestral_user');
+            window.location.href = '/auth';
+        }
+
+        // Utility functions
+        function formatNumber(num) {
+            if (num >= 1000000) {
+                return (num / 1000000).toFixed(1) + 'M';
+            } else if (num >= 1000) {
+                return (num / 1000).toFixed(1) + 'K';
+            }
+            return num.toString();
+        }
+
+        function formatDate(dateString) {
+            return new Date(dateString).toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric'
+            });
+        }
+    </script>
+</body>
+</html>

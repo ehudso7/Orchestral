@@ -333,6 +333,10 @@ def create_app() -> FastAPI:
     # Include billing/subscriptions router
     from orchestral.api.subscriptions import router as subscriptions_router
     app.include_router(subscriptions_router)
+
+    # Include auth router
+    from orchestral.api.auth import router as auth_router
+    app.include_router(auth_router)
     # Mount static files for landing page
     import os
     from pathlib import Path
@@ -350,6 +354,22 @@ def create_app() -> FastAPI:
             if index_file.exists():
                 return FileResponse(str(index_file))
             return {"name": "Orchestral API", "version": "3.0.0"}
+
+        @app.get("/auth", include_in_schema=False)
+        async def serve_auth_page():
+            """Serve the authentication page."""
+            auth_file = static_dir / "auth.html"
+            if auth_file.exists():
+                return FileResponse(str(auth_file))
+            return {"error": "Auth page not found"}
+
+        @app.get("/dashboard", include_in_schema=False)
+        async def serve_dashboard_page():
+            """Serve the dashboard page."""
+            dashboard_file = static_dir / "dashboard.html"
+            if dashboard_file.exists():
+                return FileResponse(str(dashboard_file))
+            return {"error": "Dashboard page not found"}
 
     return app
 
