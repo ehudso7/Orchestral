@@ -18,7 +18,7 @@ from pydantic import BaseModel, EmailStr, Field, field_validator
 import jwt
 
 from orchestral.core.config import get_settings
-from orchestral.billing.api_keys import APIKeyManager, KeyTier
+from orchestral.billing.api_keys import get_api_key_manager, KeyTier
 
 logger = structlog.get_logger()
 
@@ -101,7 +101,12 @@ class PasswordUpdate(BaseModel):
 
 def hash_password(password: str) -> str:
     """Hash a password for storing."""
-    return pwd_context.hash(password)
+    # BCrypt has a maximum password length of 72 bytes
+    # Truncate if necessary (though passwords should be reasonable length)
+    password_bytes = password.encode('utf-8')
+    if len(password_bytes) > 72:
+        password_bytes = password_bytes[:72]
+    return pwd_context.hash(password_bytes.decode('utf-8'))
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
@@ -185,7 +190,7 @@ async def signup(request: UserSignup):
     }
 
     # Generate API key for the user
-    api_key_manager = APIKeyManager()
+    api_key_manager = get_api_key_manager()
     raw_key, api_key = api_key_manager.generate_key(
         name=f"{request.full_name}'s API Key",
         tier=KeyTier.FREE,
@@ -382,7 +387,7 @@ async def verify_token(current_user: dict[str, Any] = Depends(get_current_user))
 @router.get("/api-keys")
 async def list_api_keys(current_user: dict[str, Any] = Depends(get_current_user)):
     """List user's API keys."""
-    api_key_manager = APIKeyManager()
+    api_key_manager = get_api_key_manager()
     keys = api_key_manager.list_keys(owner_id=current_user["id"])
 
     return {
@@ -406,7 +411,7 @@ async def create_api_key(
     current_user: dict[str, Any] = Depends(get_current_user),
 ):
     """Create a new API key."""
-    api_key_manager = APIKeyManager()
+    api_key_manager = get_api_key_manager()
 
     # Determine tier based on subscription
     tier = KeyTier(current_user.get("tier", "free").upper())
@@ -434,7 +439,7 @@ async def revoke_api_key(
     current_user: dict[str, Any] = Depends(get_current_user),
 ):
     """Revoke an API key."""
-    api_key_manager = APIKeyManager()
+    api_key_manager = get_api_key_manager()
 
     # Verify ownership
     key = api_key_manager.get_key(key_id)
