@@ -102,16 +102,35 @@ class PasswordUpdate(BaseModel):
 def hash_password(password: str) -> str:
     """Hash a password for storing."""
     # BCrypt has a maximum password length of 72 bytes
-    # Truncate if necessary (though passwords should be reasonable length)
+    # Truncate if necessary to avoid bcrypt errors
     password_bytes = password.encode('utf-8')
     if len(password_bytes) > 72:
-        password_bytes = password_bytes[:72]
-    return pwd_context.hash(password_bytes.decode('utf-8'))
+        password = password_bytes[:72].decode('utf-8', errors='ignore')
+
+    try:
+        return pwd_context.hash(password)
+    except ValueError as e:
+        # If still too long, truncate more aggressively
+        if "72 bytes" in str(e):
+            password = password[:72]
+            return pwd_context.hash(password)
+        raise
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verify a password against its hash."""
-    return pwd_context.verify(plain_password, hashed_password)
+    # Apply same truncation as in hash_password for consistency
+    password_bytes = plain_password.encode('utf-8')
+    if len(password_bytes) > 72:
+        plain_password = password_bytes[:72].decode('utf-8', errors='ignore')
+
+    try:
+        return pwd_context.verify(plain_password, hashed_password)
+    except ValueError as e:
+        if "72 bytes" in str(e):
+            plain_password = plain_password[:72]
+            return pwd_context.verify(plain_password, hashed_password)
+        raise
 
 
 def create_access_token(data: dict[str, Any], expires_delta: timedelta | None = None) -> str:
