@@ -208,18 +208,17 @@ class OpenAIProvider(BaseProvider):
                 params["max_completion_tokens"] = request.config.max_tokens
         else:
             # Standard models use max_tokens and support all sampling params
-            if request.config.max_tokens is not None:
-                params["max_tokens"] = request.config.max_tokens
-            if request.config.temperature is not None:
-                params["temperature"] = request.config.temperature
-            if request.config.top_p is not None:
-                params["top_p"] = request.config.top_p
-            if request.config.frequency_penalty is not None:
-                params["frequency_penalty"] = request.config.frequency_penalty
-            if request.config.presence_penalty is not None:
-                params["presence_penalty"] = request.config.presence_penalty
-            if request.config.stop:
-                params["stop"] = request.config.stop
+            optional_params = {
+                "max_tokens": request.config.max_tokens,
+                "temperature": request.config.temperature,
+                "top_p": request.config.top_p,
+                "frequency_penalty": request.config.frequency_penalty,
+                "presence_penalty": request.config.presence_penalty,
+                "stop": request.config.stop,
+            }
+            for key, value in optional_params.items():
+                if value is not None:
+                    params[key] = value
 
         return params
 
