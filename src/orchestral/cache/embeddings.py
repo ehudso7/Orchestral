@@ -8,10 +8,10 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 from abc import ABC, abstractmethod
 from typing import Protocol, runtime_checkable
 
-import numpy as np
 from pydantic import BaseModel, Field
 
 
@@ -66,9 +66,9 @@ class LocalEmbeddings:
         return int(h, 16)
 
     async def embed(self, text: str) -> list[float]:
-        """Generate embedding using feature hashing."""
+        """Generate embedding using feature hashing (pure Python)."""
         tokens = self._tokenize(text)
-        vector = np.zeros(self._dimension, dtype=np.float32)
+        vector = [0.0] * self._dimension
 
         for token in tokens:
             # Feature hashing with sign trick
@@ -78,11 +78,11 @@ class LocalEmbeddings:
             vector[idx] += sign
 
         # L2 normalize
-        norm = np.linalg.norm(vector)
+        norm = math.sqrt(sum(x * x for x in vector))
         if norm > 0:
-            vector = vector / norm
+            vector = [x / norm for x in vector]
 
-        return vector.tolist()
+        return vector
 
     async def embed_batch(self, texts: list[str]) -> list[list[float]]:
         """Generate embeddings for multiple texts."""
@@ -133,12 +133,15 @@ class OpenAIEmbeddings:
 
 
 def cosine_similarity(a: list[float], b: list[float]) -> float:
-    """Compute cosine similarity between two vectors."""
-    a_arr = np.array(a)
-    b_arr = np.array(b)
-    dot = np.dot(a_arr, b_arr)
-    norm_a = np.linalg.norm(a_arr)
-    norm_b = np.linalg.norm(b_arr)
+    """Compute cosine similarity between two vectors (pure Python)."""
+    if len(a) != len(b):
+        return 0.0
+
+    dot = sum(x * y for x, y in zip(a, b))
+    norm_a = math.sqrt(sum(x * x for x in a))
+    norm_b = math.sqrt(sum(y * y for y in b))
+
     if norm_a == 0 or norm_b == 0:
         return 0.0
-    return float(dot / (norm_a * norm_b))
+
+    return dot / (norm_a * norm_b)

@@ -11,8 +11,8 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import json
+import math
 from collections import deque
-import numpy as np
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any
@@ -170,17 +170,18 @@ class EmbeddingProvider:
 
 
 def cosine_similarity(a: list[float], b: list[float]) -> float:
-    """Calculate cosine similarity between two vectors."""
-    a_arr = np.array(a)
-    b_arr = np.array(b)
+    """Calculate cosine similarity between two vectors using pure Python."""
+    if len(a) != len(b):
+        return 0.0
 
-    norm_a = np.linalg.norm(a_arr)
-    norm_b = np.linalg.norm(b_arr)
+    dot_product = sum(x * y for x, y in zip(a, b))
+    norm_a = math.sqrt(sum(x * x for x in a))
+    norm_b = math.sqrt(sum(y * y for y in b))
 
     if norm_a == 0 or norm_b == 0:
         return 0.0
 
-    return float(np.dot(a_arr, b_arr) / (norm_a * norm_b))
+    return dot_product / (norm_a * norm_b)
 
 
 class SemanticCache:
