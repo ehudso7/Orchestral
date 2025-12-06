@@ -24,3 +24,9 @@ sse-starlette~=2.1.0
 PyYAML~=6.0.0
 # Pillow ~=11.3.0 required for CVE-2025-48379 security fix
 pillow~=11.3.0
+# Commercial/Scale dependencies (required for billing and enterprise features)
+redis~=5.0.0
+hiredis~=2.3.0
+cryptography>=41.0.0
+# Payment processing
+stripe~=7.0.0
