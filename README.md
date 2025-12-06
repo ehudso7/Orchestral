@@ -19,8 +19,8 @@
 
 ```bash
 # Clone the repository
-git clone https://github.com/orchestral/orchestral.git
-cd orchestral
+git clone https://github.com/ehudso7/Orchestral.git
+cd Orchestral
 
 # Install with pip
 pip install -e .

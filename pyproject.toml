@@ -61,9 +61,9 @@ dev = [
 orchestral = "orchestral.cli:app"
 
 [project.urls]
-Homepage = "https://github.com/orchestral/orchestral"
-Documentation = "https://docs.orchestral.ai"
-Repository = "https://github.com/orchestral/orchestral"
+Homepage = "https://github.com/ehudso7/Orchestral"
+Documentation = "https://github.com/ehudso7/Orchestral#readme"
+Repository = "https://github.com/ehudso7/Orchestral"
 
 [build-system]
 requires = ["hatchling"]
