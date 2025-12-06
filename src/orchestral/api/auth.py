@@ -6,6 +6,7 @@ Provides JWT-based authentication with secure user management.
 
 from __future__ import annotations
 
+import hashlib
 import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Annotated, Any
@@ -23,11 +24,11 @@ from orchestral.billing.api_keys import get_api_key_manager, KeyTier
 logger = structlog.get_logger()
 
 # Security setup
-# Configure bcrypt to automatically truncate passwords
+# Using bcrypt with SHA256 pre-hashing to handle passwords of ANY length
+# This is industry standard and removes ALL password length limitations
 pwd_context = CryptContext(
     schemes=["bcrypt"],
-    deprecated="auto",
-    bcrypt__truncate_error=False  # This tells bcrypt to silently truncate instead of raising an error
+    deprecated="auto"
 )
 security = HTTPBearer()
 
@@ -105,45 +106,39 @@ class PasswordUpdate(BaseModel):
 # ==================== HELPER FUNCTIONS ====================
 
 def hash_password(password: str) -> str:
-    """Hash a password for storing."""
-    # With bcrypt__truncate_error=False, passlib will automatically truncate
-    # But we'll still do manual truncation as a safety measure
+    """
+    Hash a password for storing using industry-standard approach.
 
-    # Ensure password doesn't exceed 72 bytes
-    password_bytes = password.encode('utf-8')
-    if len(password_bytes) > 72:
-        # Truncate to exactly 72 bytes
-        password = password_bytes[:72].decode('utf-8', errors='ignore')
-        logger.info(f"Password truncated to 72 bytes")
+    This function handles passwords of ANY length by using SHA256 pre-hashing
+    before bcrypt. This is a standard approach used by many modern applications
+    and frameworks to bypass bcrypt's 72-byte limitation while maintaining security.
 
-    try:
-        return pwd_context.hash(password)
-    except Exception as e:
-        # If it STILL fails, use a very conservative approach
-        logger.error(f"BCrypt failed even with truncate_error=False: {e}")
-        # Just use first 20 characters as absolute fallback
-        safe_password = password[:20] if len(password) > 20 else password
-        return pwd_context.hash(safe_password)
+    The process:
+    1. Hash the password with SHA256 (handles any length)
+    2. Use the SHA256 hash as input to bcrypt (always 64 hex chars = 64 bytes)
+    3. This allows unlimited password length while maintaining bcrypt's security benefits
+    """
+    # Pre-hash with SHA256 to handle passwords of any length
+    # This produces a consistent 64-character hex string regardless of input length
+    sha256_hash = hashlib.sha256(password.encode('utf-8')).hexdigest()
+
+    # Now use bcrypt on the SHA256 hash (which is always 64 bytes)
+    # This completely eliminates the 72-byte limitation
+    return pwd_context.hash(sha256_hash)
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Verify a password against its hash."""
-    # With bcrypt__truncate_error=False, passlib will automatically truncate
-    # But we'll still truncate manually for consistency
+    """
+    Verify a password against its hash.
 
-    password_bytes = plain_password.encode('utf-8')
-    if len(password_bytes) > 72:
-        # Truncate to exactly 72 bytes
-        plain_password = password_bytes[:72].decode('utf-8', errors='ignore')
+    Uses the same SHA256 pre-hashing approach as hash_password to ensure
+    passwords of any length can be verified correctly.
+    """
+    # Pre-hash with SHA256 to match the hashing process
+    sha256_hash = hashlib.sha256(plain_password.encode('utf-8')).hexdigest()
 
-    try:
-        return pwd_context.verify(plain_password, hashed_password)
-    except Exception as e:
-        # Fallback: try with first 20 characters
-        logger.error(f"Password verification failed: {e}")
-        if len(plain_password) > 20:
-            return pwd_context.verify(plain_password[:20], hashed_password)
-        return False
+    # Verify the SHA256 hash against the stored bcrypt hash
+    return pwd_context.verify(sha256_hash, hashed_password)
 
 
 def create_access_token(data: dict[str, Any], expires_delta: timedelta | None = None) -> str:
@@ -208,31 +203,14 @@ async def signup(request: UserSignup):
                 detail="Email already registered",
             )
 
-        # Truncate password if needed BEFORE hashing
-        # This ensures we never pass a too-long password to bcrypt
-        password = request.password
-        password_bytes = password.encode('utf-8')
-        if len(password_bytes) > 71:
-            logger.warning(f"Password truncated from {len(password_bytes)} to 71 bytes")
-            # Truncate at 71 bytes and find last complete UTF-8 character
-            password_bytes = password_bytes[:71]
-            while len(password_bytes) > 0:
-                try:
-                    password = password_bytes.decode('utf-8')
-                    break
-                except UnicodeDecodeError:
-                    password_bytes = password_bytes[:-1]
-            if len(password_bytes) == 0:
-                password = request.password[:20]  # Fallback
-
-        # Create user
+        # Create user - NO password length limitations!
         user_id = f"user_{secrets.token_urlsafe(16)}"
         user = {
             "id": user_id,
             "email": request.email,
             "full_name": request.full_name,
             "company": request.company,
-            "password_hash": hash_password(password),  # Use truncated password
+            "password_hash": hash_password(request.password),  # Handles ANY password length
             "created_at": datetime.now(timezone.utc).isoformat(),
             "api_key_id": None,
             "subscription_status": None,
@@ -286,22 +264,8 @@ async def login(request: UserLogin):
     Login with email and password.
 
     Returns a JWT token for API access.
+    Supports passwords of ANY length thanks to SHA256 pre-hashing.
     """
-    # Truncate password if needed (same as signup)
-    password = request.password
-    password_bytes = password.encode('utf-8')
-    if len(password_bytes) > 71:
-        # Truncate at 71 bytes and find last complete UTF-8 character
-        password_bytes = password_bytes[:71]
-        while len(password_bytes) > 0:
-            try:
-                password = password_bytes.decode('utf-8')
-                break
-            except UnicodeDecodeError:
-                password_bytes = password_bytes[:-1]
-        if len(password_bytes) == 0:
-            password = request.password[:20]  # Fallback
-
     # Find user by email
     user = None
     for u in users_db.values():
@@ -309,7 +273,7 @@ async def login(request: UserLogin):
             user = u
             break
 
-    if not user or not verify_password(password, user["password_hash"]):
+    if not user or not verify_password(request.password, user["password_hash"]):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password",
