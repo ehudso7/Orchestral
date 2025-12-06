@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git commit -m \"fix: Resolve Vercel deployment issues - all required modules now exist\n\n- Stripe modules (stripe_service.py, stripe_webhooks.py, stripe_models.py) already exist in the codebase\n- Subscriptions router (subscriptions.py) already exists in the api folder\n- All imports in server.py are now valid\n- Vercel deployment should now work correctly\n\nThe 500 error was due to trying to fix non-existent modules when they actually already existed in the codebase.\")"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
