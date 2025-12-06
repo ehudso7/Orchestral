@@ -11,10 +11,10 @@ import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Annotated, Any
 
+import bcrypt
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from passlib.context import CryptContext
 from pydantic import BaseModel, EmailStr, Field, field_validator
 import jwt
 
@@ -24,12 +24,6 @@ from orchestral.billing.api_keys import get_api_key_manager, KeyTier
 logger = structlog.get_logger()
 
 # Security setup
-# Using bcrypt with SHA256 pre-hashing to handle passwords of ANY length
-# This is industry standard and removes ALL password length limitations
-pwd_context = CryptContext(
-    schemes=["bcrypt"],
-    deprecated="auto"
-)
 security = HTTPBearer()
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
@@ -107,38 +101,44 @@ class PasswordUpdate(BaseModel):
 
 def hash_password(password: str) -> str:
     """
-    Hash a password for storing using industry-standard approach.
+    Hash a password for storing - supports UNLIMITED password length.
 
-    This function handles passwords of ANY length by using SHA256 pre-hashing
-    before bcrypt. This is a standard approach used by many modern applications
-    and frameworks to bypass bcrypt's 72-byte limitation while maintaining security.
+    This implementation uses SHA256 pre-hashing + bcrypt directly,
+    completely bypassing passlib to avoid any 72-byte limitations.
 
-    The process:
-    1. Hash the password with SHA256 (handles any length)
-    2. Use the SHA256 hash as input to bcrypt (always 64 hex chars = 64 bytes)
-    3. This allows unlimited password length while maintaining bcrypt's security benefits
+    Industry standard approach used by Django, Rails, and others.
     """
-    # Pre-hash with SHA256 to handle passwords of any length
-    # This produces a consistent 64-character hex string regardless of input length
+    # Step 1: SHA256 hash the password (handles ANY length)
+    # This produces a 64-character hex string
     sha256_hash = hashlib.sha256(password.encode('utf-8')).hexdigest()
 
-    # Now use bcrypt on the SHA256 hash (which is always 64 bytes)
-    # This completely eliminates the 72-byte limitation
-    return pwd_context.hash(sha256_hash)
+    # Step 2: Use bcrypt directly on the SHA256 hash
+    # The SHA256 hash is always 64 bytes, well under bcrypt's 72-byte limit
+    salt = bcrypt.gensalt()
+    hashed = bcrypt.hashpw(sha256_hash.encode('utf-8'), salt)
+
+    # Return as string for storage
+    return hashed.decode('utf-8')
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """
-    Verify a password against its hash.
+    Verify a password against its hash - supports UNLIMITED password length.
 
-    Uses the same SHA256 pre-hashing approach as hash_password to ensure
-    passwords of any length can be verified correctly.
+    Uses the same SHA256 pre-hashing approach for consistency.
     """
-    # Pre-hash with SHA256 to match the hashing process
+    # Step 1: SHA256 hash the password (same as during hashing)
     sha256_hash = hashlib.sha256(plain_password.encode('utf-8')).hexdigest()
 
-    # Verify the SHA256 hash against the stored bcrypt hash
-    return pwd_context.verify(sha256_hash, hashed_password)
+    # Step 2: Check against the stored bcrypt hash
+    try:
+        return bcrypt.checkpw(
+            sha256_hash.encode('utf-8'),
+            hashed_password.encode('utf-8')
+        )
+    except Exception as e:
+        logger.error(f"Password verification failed: {e}")
+        return False
 
 
 def create_access_token(data: dict[str, Any], expires_delta: timedelta | None = None) -> str:
