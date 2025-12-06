@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>About - Orchestral</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .animate-float {
+            animation: float 3s ease-in-out infinite;
+        }
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-20px); }
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Navigation -->
+    <nav class="bg-white shadow-lg sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <a href="/" class="text-2xl font-bold gradient-bg bg-clip-text text-transparent">Orchestral</a>
+                </div>
+                <div class="flex items-center space-x-6">
+                    <a href="/docs" class="text-gray-600 hover:text-gray-900">Documentation</a>
+                    <a href="/pricing" class="text-gray-600 hover:text-gray-900">Pricing</a>
+                    <a href="/about" class="text-gray-600 hover:text-gray-900 font-semibold">About</a>
+                    <div id="navAuth" class="flex items-center space-x-4">
+                        <!-- Auth buttons will be loaded here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="relative overflow-hidden">
+        <div class="gradient-bg text-white py-20">
+            <div class="max-w-7xl mx-auto px-4 text-center">
+                <h1 class="text-5xl font-bold mb-6">Building the Future of AI Integration</h1>
+                <p class="text-xl text-purple-100 max-w-3xl mx-auto">
+                    Orchestral is on a mission to simplify AI integration for developers worldwide, making advanced AI models accessible through a unified, intelligent platform.
+                </p>
+            </div>
+        </div>
+        <div class="absolute top-0 right-0 w-64 h-64 bg-purple-400 rounded-full opacity-20 -mr-32 -mt-32 animate-float"></div>
+        <div class="absolute bottom-0 left-0 w-48 h-48 bg-purple-600 rounded-full opacity-20 -ml-24 -mb-24 animate-float" style="animation-delay: 1.5s"></div>
+    </section>
+
+    <!-- Mission & Vision -->
+    <section class="py-16">
+        <div class="max-w-7xl mx-auto px-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-12">
+                <div class="bg-white rounded-xl shadow-lg p-8">
+                    <div class="w-16 h-16 bg-purple-100 rounded-lg flex items-center justify-center mb-6">
+                        <i class="fas fa-rocket text-purple-600 text-2xl"></i>
+                    </div>
+                    <h2 class="text-2xl font-bold text-gray-900 mb-4">Our Mission</h2>
+                    <p class="text-gray-700">
+                        To democratize access to AI by providing a seamless, unified platform that enables developers and businesses to leverage multiple AI models without complexity. We believe AI should be accessible, affordable, and easy to integrate.
+                    </p>
+                </div>
+
+                <div class="bg-white rounded-xl shadow-lg p-8">
+                    <div class="w-16 h-16 bg-blue-100 rounded-lg flex items-center justify-center mb-6">
+                        <i class="fas fa-eye text-blue-600 text-2xl"></i>
+                    </div>
+                    <h2 class="text-2xl font-bold text-gray-900 mb-4">Our Vision</h2>
+                    <p class="text-gray-700">
+                        To become the global standard for AI orchestration, enabling millions of applications to intelligently route requests across AI providers, optimize costs, and deliver exceptional performance at scale.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Values -->
+    <section class="py-16 bg-gray-100">
+        <div class="max-w-7xl mx-auto px-4">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl font-bold text-gray-900 mb-4">Our Core Values</h2>
+                <p class="text-xl text-gray-600">The principles that guide everything we do</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div class="text-center">
+                    <div class="w-20 h-20 bg-gradient-to-r from-purple-500 to-purple-700 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-shield-alt text-white text-2xl"></i>
+                    </div>
+                    <h3 class="text-xl font-semibold text-gray-900 mb-3">Security First</h3>
+                    <p class="text-gray-600">
+                        Enterprise-grade security is non-negotiable. We protect your data with state-of-the-art encryption and compliance standards.
+                    </p>
+                </div>
+
+                <div class="text-center">
+                    <div class="w-20 h-20 bg-gradient-to-r from-blue-500 to-blue-700 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-users text-white text-2xl"></i>
+                    </div>
+                    <h3 class="text-xl font-semibold text-gray-900 mb-3">Developer Focused</h3>
+                    <p class="text-gray-600">
+                        Built by developers, for developers. We obsess over API design, documentation, and developer experience.
+                    </p>
+                </div>
+
+                <div class="text-center">
+                    <div class="w-20 h-20 bg-gradient-to-r from-green-500 to-green-700 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-chart-line text-white text-2xl"></i>
+                    </div>
+                    <h3 class="text-xl font-semibold text-gray-900 mb-3">Performance Matters</h3>
+                    <p class="text-gray-600">
+                        Every millisecond counts. We continuously optimize for speed, reliability, and cost-efficiency.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Team -->
+    <section class="py-16">
+        <div class="max-w-7xl mx-auto px-4">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl font-bold text-gray-900 mb-4">Meet Our Team</h2>
+                <p class="text-xl text-gray-600">Passionate experts building the future of AI orchestration</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+                <div class="text-center">
+                    <div class="w-32 h-32 bg-gradient-to-r from-purple-400 to-purple-600 rounded-full mx-auto mb-4 flex items-center justify-center">
+                        <span class="text-white text-4xl font-bold">JD</span>
+                    </div>
+                    <h3 class="font-semibold text-gray-900">John Doe</h3>
+                    <p class="text-purple-600 text-sm mb-2">CEO & Co-Founder</p>
+                    <p class="text-gray-600 text-sm">Former Google AI, 15+ years in ML infrastructure</p>
+                </div>
+
+                <div class="text-center">
+                    <div class="w-32 h-32 bg-gradient-to-r from-blue-400 to-blue-600 rounded-full mx-auto mb-4 flex items-center justify-center">
+                        <span class="text-white text-4xl font-bold">SM</span>
+                    </div>
+                    <h3 class="font-semibold text-gray-900">Sarah Mitchell</h3>
+                    <p class="text-purple-600 text-sm mb-2">CTO & Co-Founder</p>
+                    <p class="text-gray-600 text-sm">Ex-OpenAI, architected billion-scale systems</p>
+                </div>
+
+                <div class="text-center">
+                    <div class="w-32 h-32 bg-gradient-to-r from-green-400 to-green-600 rounded-full mx-auto mb-4 flex items-center justify-center">
+                        <span class="text-white text-4xl font-bold">RC</span>
+                    </div>
+                    <h3 class="font-semibold text-gray-900">Robert Chen</h3>
+                    <p class="text-purple-600 text-sm mb-2">VP Engineering</p>
+                    <p class="text-gray-600 text-sm">Previously at Anthropic, distributed systems expert</p>
+                </div>
+
+                <div class="text-center">
+                    <div class="w-32 h-32 bg-gradient-to-r from-orange-400 to-orange-600 rounded-full mx-auto mb-4 flex items-center justify-center">
+                        <span class="text-white text-4xl font-bold">EP</span>
+                    </div>
+                    <h3 class="font-semibold text-gray-900">Emily Park</h3>
+                    <p class="text-purple-600 text-sm mb-2">Head of Product</p>
+                    <p class="text-gray-600 text-sm">Former Meta AI, product visionary</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Stats -->
+    <section class="py-16 bg-gradient-to-r from-purple-600 to-purple-800 text-white">
+        <div class="max-w-7xl mx-auto px-4">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-8 text-center">
+                <div>
+                    <div class="text-5xl font-bold mb-2">10M+</div>
+                    <div class="text-purple-200">API Requests Daily</div>
+                </div>
+                <div>
+                    <div class="text-5xl font-bold mb-2">50K+</div>
+                    <div class="text-purple-200">Active Developers</div>
+                </div>
+                <div>
+                    <div class="text-5xl font-bold mb-2">99.99%</div>
+                    <div class="text-purple-200">Uptime SLA</div>
+                </div>
+                <div>
+                    <div class="text-5xl font-bold mb-2">15ms</div>
+                    <div class="text-purple-200">Avg Latency</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Technology -->
+    <section class="py-16">
+        <div class="max-w-7xl mx-auto px-4">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl font-bold text-gray-900 mb-4">Our Technology</h2>
+                <p class="text-xl text-gray-600">Built on cutting-edge infrastructure for maximum performance</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div class="bg-white rounded-xl shadow-lg p-8">
+                    <h3 class="text-xl font-semibold text-gray-900 mb-4">
+                        <i class="fas fa-network-wired text-purple-600 mr-2"></i>
+                        Intelligent Routing
+                    </h3>
+                    <p class="text-gray-700 mb-4">
+                        Our proprietary routing algorithm analyzes request patterns, model performance, and cost to automatically select the optimal AI model for each request.
+                    </p>
+                    <ul class="list-disc list-inside text-gray-600 space-y-2">
+                        <li>Real-time performance monitoring</li>
+                        <li>Cost-optimized routing strategies</li>
+                        <li>Automatic failover and retry logic</li>
+                        <li>Load balancing across providers</li>
+                    </ul>
+                </div>
+
+                <div class="bg-white rounded-xl shadow-lg p-8">
+                    <h3 class="text-xl font-semibold text-gray-900 mb-4">
+                        <i class="fas fa-bolt text-yellow-500 mr-2"></i>
+                        Semantic Caching
+                    </h3>
+                    <p class="text-gray-700 mb-4">
+                        Advanced caching system that understands context and semantics, dramatically reducing latency and costs for similar requests.
+                    </p>
+                    <ul class="list-disc list-inside text-gray-600 space-y-2">
+                        <li>Context-aware cache matching</li>
+                        <li>Vector similarity search</li>
+                        <li>Automatic cache invalidation</li>
+                        <li>Up to 100x cost reduction</li>
+                    </ul>
+                </div>
+
+                <div class="bg-white rounded-xl shadow-lg p-8">
+                    <h3 class="text-xl font-semibold text-gray-900 mb-4">
+                        <i class="fas fa-shield-alt text-green-600 mr-2"></i>
+                        Enterprise Security
+                    </h3>
+                    <p class="text-gray-700 mb-4">
+                        Bank-grade security with comprehensive compliance certifications and advanced threat protection.
+                    </p>
+                    <ul class="list-disc list-inside text-gray-600 space-y-2">
+                        <li>SOC 2 Type II certified</li>
+                        <li>GDPR and CCPA compliant</li>
+                        <li>End-to-end encryption</li>
+                        <li>Regular security audits</li>
+                    </ul>
+                </div>
+
+                <div class="bg-white rounded-xl shadow-lg p-8">
+                    <h3 class="text-xl font-semibold text-gray-900 mb-4">
+                        <i class="fas fa-chart-bar text-blue-600 mr-2"></i>
+                        Advanced Analytics
+                    </h3>
+                    <p class="text-gray-700 mb-4">
+                        Comprehensive insights into your AI usage patterns, costs, and performance metrics.
+                    </p>
+                    <ul class="list-disc list-inside text-gray-600 space-y-2">
+                        <li>Real-time usage dashboards</li>
+                        <li>Cost breakdown by model</li>
+                        <li>Performance analytics</li>
+                        <li>Custom reporting tools</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Partners -->
+    <section class="py-16 bg-gray-100">
+        <div class="max-w-7xl mx-auto px-4">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl font-bold text-gray-900 mb-4">Trusted By Industry Leaders</h2>
+                <p class="text-xl text-gray-600">Powering AI integration for companies worldwide</p>
+            </div>
+
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-8">
+                <div class="bg-white rounded-lg p-6 flex items-center justify-center">
+                    <span class="text-2xl font-bold text-gray-400">TechCorp</span>
+                </div>
+                <div class="bg-white rounded-lg p-6 flex items-center justify-center">
+                    <span class="text-2xl font-bold text-gray-400">DataFlow</span>
+                </div>
+                <div class="bg-white rounded-lg p-6 flex items-center justify-center">
+                    <span class="text-2xl font-bold text-gray-400">CloudBase</span>
+                </div>
+                <div class="bg-white rounded-lg p-6 flex items-center justify-center">
+                    <span class="text-2xl font-bold text-gray-400">AIStart</span>
+                </div>
+                <div class="bg-white rounded-lg p-6 flex items-center justify-center">
+                    <span class="text-2xl font-bold text-gray-400">DevTools</span>
+                </div>
+                <div class="bg-white rounded-lg p-6 flex items-center justify-center">
+                    <span class="text-2xl font-bold text-gray-400">NextGen</span>
+                </div>
+                <div class="bg-white rounded-lg p-6 flex items-center justify-center">
+                    <span class="text-2xl font-bold text-gray-400">SmartAPI</span>
+                </div>
+                <div class="bg-white rounded-lg p-6 flex items-center justify-center">
+                    <span class="text-2xl font-bold text-gray-400">FutureTech</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Contact -->
+    <section class="py-16">
+        <div class="max-w-7xl mx-auto px-4">
+            <div class="bg-gradient-to-r from-purple-600 to-purple-800 rounded-2xl p-12 text-center text-white">
+                <h2 class="text-3xl font-bold mb-4">Ready to Get Started?</h2>
+                <p class="text-xl text-purple-100 mb-8">
+                    Join thousands of developers building with Orchestral
+                </p>
+                <div class="flex justify-center gap-4">
+                    <a href="/auth" class="bg-white text-purple-600 px-8 py-3 rounded-lg font-semibold hover:bg-purple-50 transition">
+                        Start Free Trial
+                    </a>
+                    <a href="/contact" class="bg-purple-700 text-white px-8 py-3 rounded-lg font-semibold hover:bg-purple-900 transition">
+                        Contact Sales
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-gray-900 text-gray-300 mt-20">
+        <div class="max-w-7xl mx-auto px-4 py-12">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+                <div>
+                    <h3 class="text-white font-semibold mb-4">Orchestral</h3>
+                    <p class="text-sm">Enterprise AI orchestration platform for modern applications.</p>
+                    <div class="flex space-x-4 mt-4">
+                        <a href="#" class="hover:text-white"><i class="fab fa-twitter"></i></a>
+                        <a href="#" class="hover:text-white"><i class="fab fa-linkedin"></i></a>
+                        <a href="#" class="hover:text-white"><i class="fab fa-github"></i></a>
+                        <a href="#" class="hover:text-white"><i class="fab fa-discord"></i></a>
+                    </div>
+                </div>
+                <div>
+                    <h4 class="text-white font-semibold mb-4">Product</h4>
+                    <ul class="space-y-2 text-sm">
+                        <li><a href="/features" class="hover:text-white">Features</a></li>
+                        <li><a href="/pricing" class="hover:text-white">Pricing</a></li>
+                        <li><a href="/docs" class="hover:text-white">Documentation</a></li>
+                        <li><a href="/api" class="hover:text-white">API Reference</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="text-white font-semibold mb-4">Company</h4>
+                    <ul class="space-y-2 text-sm">
+                        <li><a href="/about" class="hover:text-white">About</a></li>
+                        <li><a href="/blog" class="hover:text-white">Blog</a></li>
+                        <li><a href="/careers" class="hover:text-white">Careers</a></li>
+                        <li><a href="/press" class="hover:text-white">Press Kit</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="text-white font-semibold mb-4">Support</h4>
+                    <ul class="space-y-2 text-sm">
+                        <li><a href="/contact" class="hover:text-white">Contact Us</a></li>
+                        <li><a href="/support" class="hover:text-white">Support Center</a></li>
+                        <li><a href="/status" class="hover:text-white">System Status</a></li>
+                        <li><a href="/security" class="hover:text-white">Security</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="border-t border-gray-800 mt-8 pt-8 text-center text-sm">
+                <p>&copy; 2024 Orchestral, Inc. All rights reserved. |
+                    <a href="/privacy" class="hover:text-white">Privacy</a> |
+                    <a href="/terms" class="hover:text-white">Terms</a> |
+                    <a href="/cookies" class="hover:text-white">Cookies</a>
+                </p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Setup navigation based on auth status
+        document.addEventListener('DOMContentLoaded', () => {
+            const token = localStorage.getItem('orchestral_token');
+            const user = JSON.parse(localStorage.getItem('orchestral_user') || '{}');
+            const navAuth = document.getElementById('navAuth');
+
+            if (token && user) {
+                navAuth.innerHTML = `
+                    <a href="/dashboard" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg font-semibold transition">
+                        Dashboard
+                    </a>
+                `;
+            } else {
+                navAuth.innerHTML = `
+                    <a href="/auth" class="text-gray-600 hover:text-gray-900">Sign In</a>
+                    <a href="/auth" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg font-semibold transition">
+                        Get Started
+                    </a>
+                `;
+            }
+        });
+    </script>
+</body>
+</html>

@@ -264,6 +264,13 @@ async def signup(request: UserSignup):
         # Save user to database
         db.create_user(user_id, user)
 
+        # Send welcome notification
+        try:
+            from orchestral.api.notifications import notify_welcome
+            notify_welcome(user_id, request.full_name)
+        except Exception as e:
+            logger.warning(f"Failed to send welcome notification: {e}")
+
         # Create session token
         access_token = create_access_token({"sub": user_id})
 

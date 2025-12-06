@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notifications - Orchestral</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .notification-enter {
+            animation: slideIn 0.3s ease-out;
+        }
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        .notification-fade {
+            animation: fadeIn 0.2s ease-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+    </style>
+</head>
+<body>
+    <!-- Notification Center Modal -->
+    <div id="notificationModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-start justify-end pt-20 pr-4">
+        <div class="bg-white rounded-lg shadow-2xl w-full max-w-md notification-fade">
+            <!-- Header -->
+            <div class="bg-gradient-to-r from-purple-600 to-purple-800 text-white px-6 py-4 rounded-t-lg">
+                <div class="flex justify-between items-center">
+                    <h3 class="text-lg font-semibold">
+                        <i class="fas fa-bell mr-2"></i>Notifications
+                    </h3>
+                    <button onclick="closeNotificationModal()" class="hover:bg-white/20 rounded-full p-2 transition">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="flex gap-2 mt-3">
+                    <button onclick="filterNotifications('all')" class="filter-btn active px-3 py-1 bg-white/20 rounded-full text-sm">
+                        All
+                    </button>
+                    <button onclick="filterNotifications('unread')" class="filter-btn px-3 py-1 hover:bg-white/20 rounded-full text-sm transition">
+                        Unread
+                    </button>
+                    <button onclick="filterNotifications('important')" class="filter-btn px-3 py-1 hover:bg-white/20 rounded-full text-sm transition">
+                        Important
+                    </button>
+                </div>
+            </div>
+
+            <!-- Actions Bar -->
+            <div class="px-6 py-3 border-b bg-gray-50 flex justify-between items-center">
+                <span id="notificationCount" class="text-sm text-gray-600">0 unread</span>
+                <div class="flex gap-2">
+                    <button onclick="markAllAsRead()" class="text-sm text-purple-600 hover:text-purple-700 font-medium">
+                        Mark all read
+                    </button>
+                    <button onclick="clearAllNotifications()" class="text-sm text-red-600 hover:text-red-700 font-medium">
+                        Clear all
+                    </button>
+                </div>
+            </div>
+
+            <!-- Notifications List -->
+            <div id="notificationsList" class="max-h-[500px] overflow-y-auto">
+                <!-- Notifications will be loaded here -->
+            </div>
+
+            <!-- Empty State -->
+            <div id="emptyState" class="hidden p-12 text-center">
+                <i class="fas fa-bell-slash text-4xl text-gray-300 mb-4"></i>
+                <p class="text-gray-500">No notifications yet</p>
+                <p class="text-sm text-gray-400 mt-2">We'll notify you when something important happens</p>
+            </div>
+
+            <!-- Loading State -->
+            <div id="loadingState" class="hidden p-12 text-center">
+                <i class="fas fa-spinner fa-spin text-3xl text-purple-600 mb-4"></i>
+                <p class="text-gray-500">Loading notifications...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Toast Container -->
+    <div id="toastContainer" class="fixed top-4 right-4 z-50 flex flex-col gap-2 pointer-events-none">
+    </div>
+
+    <script>
+        const API_BASE = window.location.origin;
+        let notifications = [];
+        let currentFilter = 'all';
+
+        // Get auth token
+        function getAuthHeaders() {
+            const token = localStorage.getItem('orchestral_token');
+            return token ? { 'Authorization': `Bearer ${token}` } : {};
+        }
+
+        // Load notifications
+        async function loadNotifications() {
+            const loadingState = document.getElementById('loadingState');
+            const emptyState = document.getElementById('emptyState');
+            const notificationsList = document.getElementById('notificationsList');
+
+            loadingState.classList.remove('hidden');
+            emptyState.classList.add('hidden');
+            notificationsList.innerHTML = '';
+
+            try {
+                const response = await axios.get(`${API_BASE}/notifications`, {
+                    headers: getAuthHeaders(),
+                    params: currentFilter === 'unread' ? { unread_only: true } : {}
+                });
+
+                notifications = response.data.notifications;
+                const unreadCount = response.data.unread_count;
+
+                // Update count
+                document.getElementById('notificationCount').textContent =
+                    unreadCount === 0 ? 'All caught up!' : `${unreadCount} unread`;
+
+                // Update bell badge in parent window if exists
+                if (window.parent && window.parent.updateNotificationBadge) {
+                    window.parent.updateNotificationBadge(unreadCount);
+                }
+
+                loadingState.classList.add('hidden');
+
+                if (notifications.length === 0) {
+                    emptyState.classList.remove('hidden');
+                } else {
+                    renderNotifications();
+                }
+
+            } catch (error) {
+                console.error('Failed to load notifications:', error);
+                loadingState.classList.add('hidden');
+                emptyState.classList.remove('hidden');
+            }
+        }
+
+        // Render notifications
+        function renderNotifications() {
+            const notificationsList = document.getElementById('notificationsList');
+
+            let filteredNotifications = notifications;
+            if (currentFilter === 'important') {
+                filteredNotifications = notifications.filter(n =>
+                    n.priority === 'high' || n.priority === 'urgent'
+                );
+            }
+
+            notificationsList.innerHTML = filteredNotifications.map(notification => {
+                const icon = getNotificationIcon(notification);
+                const color = getNotificationColor(notification);
+                const timeAgo = getTimeAgo(notification.created_at);
+
+                return `
+                    <div class="notification-item ${!notification.read ? 'bg-purple-50' : ''} border-b hover:bg-gray-50 transition-colors">
+                        <div class="px-6 py-4">
+                            <div class="flex items-start">
+                                <div class="flex-shrink-0">
+                                    <div class="w-10 h-10 rounded-full ${color} flex items-center justify-center text-white">
+                                        <i class="${icon}"></i>
+                                    </div>
+                                </div>
+                                <div class="ml-4 flex-1">
+                                    <div class="flex items-start justify-between">
+                                        <div class="flex-1">
+                                            <p class="font-semibold text-gray-900 ${!notification.read ? '' : 'font-normal'}">
+                                                ${notification.title}
+                                            </p>
+                                            <p class="text-sm text-gray-600 mt-1">${notification.message}</p>
+                                            ${notification.link ? `
+                                                <a href="${notification.link}" class="text-sm text-purple-600 hover:text-purple-700 mt-2 inline-block">
+                                                    View details <i class="fas fa-arrow-right ml-1"></i>
+                                                </a>
+                                            ` : ''}
+                                        </div>
+                                        <div class="ml-4 flex flex-col items-end">
+                                            <span class="text-xs text-gray-500">${timeAgo}</span>
+                                            <div class="mt-2 flex gap-1">
+                                                ${!notification.read ? `
+                                                    <button onclick="markAsRead('${notification.id}')"
+                                                        class="text-gray-400 hover:text-purple-600 p-1"
+                                                        title="Mark as read">
+                                                        <i class="fas fa-check text-sm"></i>
+                                                    </button>
+                                                ` : ''}
+                                                <button onclick="deleteNotification('${notification.id}')"
+                                                    class="text-gray-400 hover:text-red-600 p-1"
+                                                    title="Delete">
+                                                    <i class="fas fa-trash text-sm"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            if (filteredNotifications.length === 0) {
+                notificationsList.innerHTML = `
+                    <div class="p-12 text-center">
+                        <i class="fas fa-filter text-3xl text-gray-300 mb-4"></i>
+                        <p class="text-gray-500">No ${currentFilter} notifications</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Get notification icon
+        function getNotificationIcon(notification) {
+            const iconMap = {
+                'info': 'fas fa-info',
+                'success': 'fas fa-check',
+                'warning': 'fas fa-exclamation',
+                'error': 'fas fa-times',
+                'system': 'fas fa-cog',
+                'billing': 'fas fa-credit-card',
+                'api': 'fas fa-key',
+                'security': 'fas fa-shield-alt'
+            };
+            return notification.icon || iconMap[notification.type] || 'fas fa-bell';
+        }
+
+        // Get notification color
+        function getNotificationColor(notification) {
+            const colorMap = {
+                'info': 'bg-blue-500',
+                'success': 'bg-green-500',
+                'warning': 'bg-yellow-500',
+                'error': 'bg-red-500',
+                'system': 'bg-gray-500',
+                'billing': 'bg-purple-500',
+                'api': 'bg-indigo-500',
+                'security': 'bg-red-600'
+            };
+
+            if (notification.priority === 'urgent') {
+                return 'bg-red-600';
+            }
+
+            return colorMap[notification.type] || 'bg-gray-500';
+        }
+
+        // Get time ago
+        function getTimeAgo(dateString) {
+            const date = new Date(dateString);
+            const now = new Date();
+            const seconds = Math.floor((now - date) / 1000);
+
+            if (seconds < 60) return 'Just now';
+            if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+            if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
+            if (seconds < 604800) return `${Math.floor(seconds / 86400)}d ago`;
+            return date.toLocaleDateString();
+        }
+
+        // Mark as read
+        async function markAsRead(notificationId) {
+            try {
+                await axios.post(`${API_BASE}/notifications/${notificationId}/read`, {}, {
+                    headers: getAuthHeaders()
+                });
+
+                // Update local state
+                const notification = notifications.find(n => n.id === notificationId);
+                if (notification) {
+                    notification.read = true;
+                    renderNotifications();
+                    updateUnreadCount();
+                }
+            } catch (error) {
+                console.error('Failed to mark as read:', error);
+            }
+        }
+
+        // Mark all as read
+        async function markAllAsRead() {
+            try {
+                await axios.post(`${API_BASE}/notifications/mark-all-read`, {}, {
+                    headers: getAuthHeaders()
+                });
+
+                // Update local state
+                notifications.forEach(n => n.read = true);
+                renderNotifications();
+                updateUnreadCount();
+
+                showToast('All notifications marked as read', 'success');
+            } catch (error) {
+                console.error('Failed to mark all as read:', error);
+                showToast('Failed to mark notifications as read', 'error');
+            }
+        }
+
+        // Delete notification
+        async function deleteNotification(notificationId) {
+            try {
+                await axios.delete(`${API_BASE}/notifications/${notificationId}`, {
+                    headers: getAuthHeaders()
+                });
+
+                // Remove from local state
+                notifications = notifications.filter(n => n.id !== notificationId);
+                renderNotifications();
+                updateUnreadCount();
+
+            } catch (error) {
+                console.error('Failed to delete notification:', error);
+            }
+        }
+
+        // Clear all notifications
+        async function clearAllNotifications() {
+            if (!confirm('Are you sure you want to clear all notifications?')) {
+                return;
+            }
+
+            try {
+                await axios.delete(`${API_BASE}/notifications/clear-all`, {
+                    headers: getAuthHeaders()
+                });
+
+                notifications = [];
+                renderNotifications();
+                updateUnreadCount();
+                document.getElementById('emptyState').classList.remove('hidden');
+
+                showToast('All notifications cleared', 'success');
+            } catch (error) {
+                console.error('Failed to clear notifications:', error);
+                showToast('Failed to clear notifications', 'error');
+            }
+        }
+
+        // Filter notifications
+        function filterNotifications(filter) {
+            currentFilter = filter;
+
+            // Update filter buttons
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.classList.remove('active', 'bg-white/20');
+                if (btn.textContent.toLowerCase().includes(filter)) {
+                    btn.classList.add('active', 'bg-white/20');
+                } else {
+                    btn.classList.add('hover:bg-white/20');
+                }
+            });
+
+            if (filter === 'unread') {
+                loadNotifications();  // Reload to get only unread
+            } else {
+                renderNotifications();  // Just re-render with filter
+            }
+        }
+
+        // Update unread count
+        function updateUnreadCount() {
+            const unreadCount = notifications.filter(n => !n.read).length;
+            document.getElementById('notificationCount').textContent =
+                unreadCount === 0 ? 'All caught up!' : `${unreadCount} unread`;
+
+            // Update bell badge in parent window if exists
+            if (window.parent && window.parent.updateNotificationBadge) {
+                window.parent.updateNotificationBadge(unreadCount);
+            }
+        }
+
+        // Close modal
+        function closeNotificationModal() {
+            document.getElementById('notificationModal').classList.add('hidden');
+        }
+
+        // Show toast notification
+        function showToast(message, type = 'info') {
+            const toastContainer = document.getElementById('toastContainer');
+            const toastId = `toast-${Date.now()}`;
+
+            const colors = {
+                'success': 'bg-green-500',
+                'error': 'bg-red-500',
+                'warning': 'bg-yellow-500',
+                'info': 'bg-blue-500'
+            };
+
+            const toast = document.createElement('div');
+            toast.id = toastId;
+            toast.className = `${colors[type]} text-white px-6 py-3 rounded-lg shadow-lg pointer-events-auto notification-enter flex items-center gap-3`;
+            toast.innerHTML = `
+                <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'times-circle' : 'info-circle'}"></i>
+                <span>${message}</span>
+            `;
+
+            toastContainer.appendChild(toast);
+
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateX(100%)';
+                setTimeout(() => {
+                    toastContainer.removeChild(toast);
+                }, 300);
+            }, 3000);
+        }
+
+        // Initialize when included in dashboard
+        if (window.parent !== window) {
+            // We're in an iframe or included context
+            window.showNotificationModal = function() {
+                document.getElementById('notificationModal').classList.remove('hidden');
+                loadNotifications();
+            };
+
+            window.closeNotificationModal = closeNotificationModal;
+        }
+
+        // Standalone page initialization
+        if (window.parent === window) {
+            document.addEventListener('DOMContentLoaded', () => {
+                // Check auth
+                const token = localStorage.getItem('orchestral_token');
+                if (!token) {
+                    window.location.href = '/auth';
+                    return;
+                }
+
+                // Show modal by default on standalone page
+                document.getElementById('notificationModal').classList.remove('hidden');
+                loadNotifications();
+
+                // Refresh notifications every 30 seconds
+                setInterval(loadNotifications, 30000);
+            });
+        }
+    </script>
+</body>
+</html>

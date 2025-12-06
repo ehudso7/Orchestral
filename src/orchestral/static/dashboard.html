@@ -13,35 +13,118 @@
         .gradient-bg {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         }
+        .glass {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .notification-badge {
+            position: absolute;
+            top: -4px;
+            right: -4px;
+            background: #ef4444;
+            color: white;
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 9999px;
+            font-weight: bold;
+        }
+        /* Smooth animations */
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .animate-slide-in {
+            animation: slideIn 0.3s ease-out;
+        }
+        .animate-fade-in {
+            animation: fadeIn 0.5s ease-out;
+        }
+        .animate-pulse {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        /* Chart container fix */
+        .chart-container {
+            position: relative;
+            height: 300px;
+            width: 100%;
+        }
+        /* Smooth transitions */
+        .transition-all {
+            transition: all 0.3s ease;
+        }
+        /* Custom scrollbar */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 8px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
     </style>
 </head>
 <body class="bg-gray-50">
     <!-- Navigation -->
-    <nav class="bg-white shadow-lg">
+    <nav class="bg-white shadow-lg sticky top-0 z-40">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between h-16">
                 <div class="flex items-center">
                     <h1 class="text-2xl font-bold gradient-bg bg-clip-text text-transparent">Orchestral</h1>
                 </div>
                 <div class="flex items-center space-x-4">
-                    <button class="text-gray-600 hover:text-gray-900">
-                        <i class="fas fa-bell"></i>
+                    <!-- Notification Bell -->
+                    <button id="notificationBell" onclick="toggleNotifications()" class="relative text-gray-600 hover:text-gray-900 transition-all p-2">
+                        <i class="fas fa-bell text-lg"></i>
+                        <span id="notificationBadge" class="notification-badge hidden">0</span>
                     </button>
+
+                    <!-- Profile Dropdown -->
                     <div class="relative">
-                        <button onclick="toggleUserMenu()" class="flex items-center space-x-2 text-gray-700 hover:text-gray-900">
-                            <i class="fas fa-user-circle text-2xl"></i>
-                            <span id="userName">User</span>
+                        <button onclick="toggleUserMenu()" class="flex items-center space-x-2 text-gray-700 hover:text-gray-900 transition-all">
+                            <div class="w-8 h-8 bg-gradient-to-r from-purple-500 to-purple-700 rounded-full flex items-center justify-center text-white font-bold">
+                                <span id="userInitial">U</span>
+                            </div>
+                            <span id="userName" class="font-medium">User</span>
                             <i class="fas fa-chevron-down text-sm"></i>
                         </button>
-                        <div id="userMenu" class="hidden absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl py-2">
-                            <a href="#profile" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">
-                                <i class="fas fa-user mr-2"></i> Profile
+                        <div id="userMenu" class="hidden absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-xl py-2 animate-fade-in">
+                            <div class="px-4 py-2 border-b">
+                                <p class="text-sm font-medium text-gray-900" id="userEmail">user@example.com</p>
+                                <p class="text-xs text-gray-500" id="userTier">Free Tier</p>
+                            </div>
+                            <a href="#profile" onclick="showProfile()" class="block px-4 py-2 text-gray-700 hover:bg-purple-50 hover:text-purple-600 transition-all">
+                                <i class="fas fa-user mr-2"></i> Profile Settings
                             </a>
-                            <a href="#billing" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">
-                                <i class="fas fa-credit-card mr-2"></i> Billing
+                            <a href="#billing" onclick="showBilling()" class="block px-4 py-2 text-gray-700 hover:bg-purple-50 hover:text-purple-600 transition-all">
+                                <i class="fas fa-credit-card mr-2"></i> Billing & Plans
+                            </a>
+                            <a href="#security" onclick="showSecurity()" class="block px-4 py-2 text-gray-700 hover:bg-purple-50 hover:text-purple-600 transition-all">
+                                <i class="fas fa-shield-alt mr-2"></i> Security
                             </a>
                             <hr class="my-2">
-                            <a href="#" onclick="logout()" class="block px-4 py-2 text-red-600 hover:bg-gray-100">
+                            <a href="/docs" target="_blank" class="block px-4 py-2 text-gray-700 hover:bg-purple-50 hover:text-purple-600 transition-all">
+                                <i class="fas fa-book mr-2"></i> Documentation
+                            </a>
+                            <a href="/support" class="block px-4 py-2 text-gray-700 hover:bg-purple-50 hover:text-purple-600 transition-all">
+                                <i class="fas fa-life-ring mr-2"></i> Support
+                            </a>
+                            <hr class="my-2">
+                            <a href="#" onclick="logout()" class="block px-4 py-2 text-red-600 hover:bg-red-50 transition-all">
                                 <i class="fas fa-sign-out-alt mr-2"></i> Logout
                             </a>
                         </div>
@@ -51,304 +134,568 @@
         </div>
     </nav>
 
-    <div class="flex h-screen">
+    <!-- Notification Panel -->
+    <div id="notificationPanel" class="fixed right-0 top-16 w-96 bg-white shadow-2xl rounded-l-lg z-30 transform translate-x-full transition-transform duration-300 max-h-[calc(100vh-4rem)]">
+        <div class="bg-gradient-to-r from-purple-600 to-purple-800 text-white px-6 py-4 rounded-tl-lg">
+            <div class="flex justify-between items-center">
+                <h3 class="text-lg font-semibold">
+                    <i class="fas fa-bell mr-2"></i>Notifications
+                </h3>
+                <button onclick="toggleNotifications()" class="hover:bg-white/20 rounded-full p-2 transition">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        </div>
+        <div class="px-4 py-3 border-b flex justify-between items-center bg-gray-50">
+            <span class="text-sm text-gray-600" id="notificationCount">0 unread</span>
+            <div class="flex gap-2">
+                <button onclick="markAllAsRead()" class="text-sm text-purple-600 hover:text-purple-700 font-medium">
+                    Mark all read
+                </button>
+            </div>
+        </div>
+        <div id="notificationsList" class="overflow-y-auto custom-scrollbar" style="max-height: calc(100vh - 12rem);">
+            <!-- Notifications will be loaded here -->
+        </div>
+    </div>
+
+    <div class="flex h-[calc(100vh-4rem)]">
         <!-- Sidebar -->
-        <aside class="w-64 bg-white shadow-lg pt-4">
+        <aside class="w-64 bg-white shadow-lg overflow-y-auto custom-scrollbar">
             <nav class="mt-4">
-                <a href="#overview" class="sidebar-link active flex items-center px-6 py-3 text-gray-700 hover:bg-purple-50 hover:text-purple-600">
+                <a href="#overview" class="sidebar-link active flex items-center px-6 py-3 text-gray-700 hover:bg-purple-50 hover:text-purple-600 transition-all">
                     <i class="fas fa-chart-pie mr-3"></i> Overview
                 </a>
-                <a href="#api-keys" class="sidebar-link flex items-center px-6 py-3 text-gray-700 hover:bg-purple-50 hover:text-purple-600">
+                <a href="#api-keys" class="sidebar-link flex items-center px-6 py-3 text-gray-700 hover:bg-purple-50 hover:text-purple-600 transition-all">
                     <i class="fas fa-key mr-3"></i> API Keys
                 </a>
-                <a href="#usage" class="sidebar-link flex items-center px-6 py-3 text-gray-700 hover:bg-purple-50 hover:text-purple-600">
-                    <i class="fas fa-chart-line mr-3"></i> Usage
+                <a href="#usage" class="sidebar-link flex items-center px-6 py-3 text-gray-700 hover:bg-purple-50 hover:text-purple-600 transition-all">
+                    <i class="fas fa-chart-line mr-3"></i> Usage Analytics
                 </a>
-                <a href="#billing" class="sidebar-link flex items-center px-6 py-3 text-gray-700 hover:bg-purple-50 hover:text-purple-600">
-                    <i class="fas fa-credit-card mr-3"></i> Billing
-                </a>
-                <a href="#models" class="sidebar-link flex items-center px-6 py-3 text-gray-700 hover:bg-purple-50 hover:text-purple-600">
+                <a href="#models" class="sidebar-link flex items-center px-6 py-3 text-gray-700 hover:bg-purple-50 hover:text-purple-600 transition-all">
                     <i class="fas fa-robot mr-3"></i> Models
                 </a>
-                <a href="#settings" class="sidebar-link flex items-center px-6 py-3 text-gray-700 hover:bg-purple-50 hover:text-purple-600">
+                <a href="#playground" class="sidebar-link flex items-center px-6 py-3 text-gray-700 hover:bg-purple-50 hover:text-purple-600 transition-all">
+                    <i class="fas fa-code mr-3"></i> Playground
+                </a>
+                <a href="#logs" class="sidebar-link flex items-center px-6 py-3 text-gray-700 hover:bg-purple-50 hover:text-purple-600 transition-all">
+                    <i class="fas fa-list mr-3"></i> Request Logs
+                </a>
+                <a href="#billing" class="sidebar-link flex items-center px-6 py-3 text-gray-700 hover:bg-purple-50 hover:text-purple-600 transition-all">
+                    <i class="fas fa-credit-card mr-3"></i> Billing
+                </a>
+                <a href="#settings" class="sidebar-link flex items-center px-6 py-3 text-gray-700 hover:bg-purple-50 hover:text-purple-600 transition-all">
                     <i class="fas fa-cog mr-3"></i> Settings
                 </a>
+
+                <div class="mt-6 px-6">
+                    <div class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Resources</div>
+                    <a href="/docs" target="_blank" class="flex items-center px-6 py-2 text-gray-600 hover:text-purple-600 transition-all text-sm">
+                        <i class="fas fa-book mr-3"></i> Documentation
+                    </a>
+                    <a href="/api-reference" target="_blank" class="flex items-center px-6 py-2 text-gray-600 hover:text-purple-600 transition-all text-sm">
+                        <i class="fas fa-code mr-3"></i> API Reference
+                    </a>
+                    <a href="/support" class="flex items-center px-6 py-2 text-gray-600 hover:text-purple-600 transition-all text-sm">
+                        <i class="fas fa-headset mr-3"></i> Support
+                    </a>
+                </div>
             </nav>
         </aside>
 
         <!-- Main Content -->
-        <main class="flex-1 p-6 overflow-auto">
+        <main class="flex-1 overflow-y-auto custom-scrollbar">
             <!-- Overview Section -->
-            <section id="overview" class="content-section">
-                <h2 class="text-2xl font-bold mb-6">Dashboard Overview</h2>
+            <section id="overview" class="content-section p-6 animate-fade-in">
+                <h2 class="text-2xl font-bold text-gray-900 mb-6">Dashboard Overview</h2>
 
-                <!-- Stats Cards -->
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-                    <div class="bg-white rounded-lg p-6 shadow">
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <p class="text-gray-500 text-sm">API Calls Today</p>
-                                <p class="text-2xl font-bold" id="apiCallsToday">0</p>
+                <!-- Stats Grid -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                    <div class="bg-white rounded-xl shadow-sm p-6 hover:shadow-lg transition-all">
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                                <i class="fas fa-phone-volume text-blue-600 text-xl"></i>
                             </div>
-                            <i class="fas fa-exchange-alt text-purple-600 text-3xl"></i>
+                            <span class="text-xs text-green-600 bg-green-100 px-2 py-1 rounded-full">+12%</span>
+                        </div>
+                        <div class="text-2xl font-bold text-gray-900" id="apiCallsToday">0</div>
+                        <div class="text-sm text-gray-500">API Calls Today</div>
+                    </div>
+
+                    <div class="bg-white rounded-xl shadow-sm p-6 hover:shadow-lg transition-all">
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
+                                <i class="fas fa-coins text-purple-600 text-xl"></i>
+                            </div>
+                            <span class="text-xs text-yellow-600 bg-yellow-100 px-2 py-1 rounded-full">85%</span>
+                        </div>
+                        <div class="text-2xl font-bold text-gray-900" id="tokensUsed">0</div>
+                        <div class="text-sm text-gray-500">Tokens Used</div>
+                    </div>
+
+                    <div class="bg-white rounded-xl shadow-sm p-6 hover:shadow-lg transition-all">
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                                <i class="fas fa-crown text-green-600 text-xl"></i>
+                            </div>
+                        </div>
+                        <div class="text-2xl font-bold text-gray-900" id="currentTier">Free</div>
+                        <div class="text-sm text-gray-500">Current Tier</div>
+                    </div>
+
+                    <div class="bg-white rounded-xl shadow-sm p-6 hover:shadow-lg transition-all">
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
+                                <i class="fas fa-dollar-sign text-red-600 text-xl"></i>
+                            </div>
+                        </div>
+                        <div class="text-2xl font-bold text-gray-900" id="monthlyCost">$0</div>
+                        <div class="text-sm text-gray-500">Monthly Cost</div>
+                    </div>
+                </div>
+
+                <!-- Charts Row -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                    <!-- Usage Chart -->
+                    <div class="bg-white rounded-xl shadow-sm p-6">
+                        <h3 class="text-lg font-semibold text-gray-900 mb-4">Usage Over Time</h3>
+                        <div class="chart-container">
+                            <canvas id="usageChart"></canvas>
                         </div>
                     </div>
-                    <div class="bg-white rounded-lg p-6 shadow">
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <p class="text-gray-500 text-sm">Tokens Used</p>
-                                <p class="text-2xl font-bold" id="tokensUsed">0</p>
-                            </div>
-                            <i class="fas fa-coins text-green-600 text-3xl"></i>
-                        </div>
-                    </div>
-                    <div class="bg-white rounded-lg p-6 shadow">
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <p class="text-gray-500 text-sm">Current Tier</p>
-                                <p class="text-2xl font-bold" id="currentTier">Free</p>
-                            </div>
-                            <i class="fas fa-layer-group text-blue-600 text-3xl"></i>
-                        </div>
-                    </div>
-                    <div class="bg-white rounded-lg p-6 shadow">
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <p class="text-gray-500 text-sm">Monthly Cost</p>
-                                <p class="text-2xl font-bold" id="monthlyCost">$0</p>
-                            </div>
-                            <i class="fas fa-dollar-sign text-yellow-600 text-3xl"></i>
+
+                    <!-- Model Distribution -->
+                    <div class="bg-white rounded-xl shadow-sm p-6">
+                        <h3 class="text-lg font-semibold text-gray-900 mb-4">Model Usage Distribution</h3>
+                        <div class="chart-container">
+                            <canvas id="modelChart"></canvas>
                         </div>
                     </div>
                 </div>
 
-                <!-- Usage Chart -->
-                <div class="bg-white rounded-lg p-6 shadow mb-8">
-                    <h3 class="text-lg font-semibold mb-4">Usage Over Time</h3>
-                    <canvas id="usageChart" width="400" height="100"></canvas>
+                <!-- Recent Activity -->
+                <div class="bg-white rounded-xl shadow-sm p-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Recent Activity</h3>
+                    <div id="recentActivity" class="space-y-3">
+                        <!-- Activity items will be loaded here -->
+                    </div>
                 </div>
             </section>
 
             <!-- API Keys Section -->
-            <section id="api-keys" class="content-section hidden">
+            <section id="api-keys" class="content-section hidden p-6 animate-fade-in">
                 <div class="flex justify-between items-center mb-6">
-                    <h2 class="text-2xl font-bold">API Keys</h2>
-                    <button onclick="showCreateKeyModal()" class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700">
-                        <i class="fas fa-plus mr-2"></i> Create New Key
+                    <h2 class="text-2xl font-bold text-gray-900">API Keys</h2>
+                    <button onclick="showCreateKeyModal()" class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-all">
+                        <i class="fas fa-plus mr-2"></i>Create New Key
                     </button>
                 </div>
 
-                <div class="bg-white rounded-lg shadow">
-                    <table class="w-full">
+                <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+                    <table class="min-w-full">
                         <thead class="bg-gray-50">
                             <tr>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Key</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Created</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Last Used</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Key</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Used</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                             </tr>
                         </thead>
-                        <tbody id="apiKeysTable">
-                            <!-- Keys will be loaded here -->
+                        <tbody id="apiKeysTable" class="bg-white divide-y divide-gray-200">
+                            <!-- API keys will be loaded here -->
                         </tbody>
                     </table>
                 </div>
             </section>
 
-            <!-- Usage Section -->
-            <section id="usage" class="content-section hidden">
-                <h2 class="text-2xl font-bold mb-6">Usage Analytics</h2>
+            <!-- Usage Analytics Section -->
+            <section id="usage" class="content-section hidden p-6 animate-fade-in">
+                <h2 class="text-2xl font-bold text-gray-900 mb-6">Usage Analytics</h2>
 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                    <div class="bg-white rounded-lg p-6 shadow">
-                        <h3 class="text-lg font-semibold mb-4">Daily Usage</h3>
-                        <canvas id="dailyUsageChart" width="400" height="200"></canvas>
-                    </div>
-                    <div class="bg-white rounded-lg p-6 shadow">
-                        <h3 class="text-lg font-semibold mb-4">Model Distribution</h3>
-                        <canvas id="modelUsageChart" width="400" height="200"></canvas>
-                    </div>
-                </div>
-
-                <div class="bg-white rounded-lg p-6 shadow">
-                    <h3 class="text-lg font-semibold mb-4">Recent Requests</h3>
-                    <table class="w-full">
-                        <thead class="bg-gray-50">
-                            <tr>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Time</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Model</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tokens</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Cost</th>
-                            </tr>
-                        </thead>
-                        <tbody id="recentRequestsTable">
-                            <tr><td colspan="4" class="text-center py-4 text-gray-500">No recent requests</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-            </section>
-
-            <!-- Billing Section -->
-            <section id="billing" class="content-section hidden">
-                <h2 class="text-2xl font-bold mb-6">Billing & Subscription</h2>
-
-                <!-- Current Plan Card -->
-                <div class="bg-white rounded-lg p-6 shadow mb-6">
-                    <h3 class="text-lg font-semibold mb-4">Current Plan</h3>
+                <!-- Date Range Selector -->
+                <div class="bg-white rounded-xl shadow-sm p-4 mb-6">
                     <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-2xl font-bold" id="planName">Free</p>
-                            <p class="text-gray-500" id="planDetails">100K tokens/month • 10 req/min</p>
+                        <div class="flex gap-2">
+                            <button class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">Today</button>
+                            <button class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">7 Days</button>
+                            <button class="px-4 py-2 text-sm font-medium text-white bg-purple-600 border border-purple-600 rounded-lg">30 Days</button>
+                            <button class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">Custom</button>
                         </div>
-                        <button onclick="changePlan()" class="bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-700">
-                            Upgrade Plan
+                        <button class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
+                            <i class="fas fa-download mr-2"></i>Export
                         </button>
                     </div>
                 </div>
 
-                <!-- Payment Method Card -->
-                <div class="bg-white rounded-lg p-6 shadow mb-6">
-                    <h3 class="text-lg font-semibold mb-4">Payment Method</h3>
-                    <div id="paymentMethodSection">
-                        <!-- Payment method will be loaded here -->
+                <!-- Detailed Charts -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                    <div class="bg-white rounded-xl shadow-sm p-6">
+                        <h3 class="text-lg font-semibold text-gray-900 mb-4">Request Volume</h3>
+                        <div class="chart-container">
+                            <canvas id="volumeChart"></canvas>
+                        </div>
                     </div>
-                    <button onclick="addPaymentMethod()" class="mt-4 text-purple-600 hover:text-purple-700">
-                        <i class="fas fa-plus mr-2"></i> Add Payment Method
-                    </button>
+
+                    <div class="bg-white rounded-xl shadow-sm p-6">
+                        <h3 class="text-lg font-semibold text-gray-900 mb-4">Response Times</h3>
+                        <div class="chart-container">
+                            <canvas id="latencyChart"></canvas>
+                        </div>
+                    </div>
                 </div>
 
-                <!-- Invoices -->
-                <div class="bg-white rounded-lg p-6 shadow">
-                    <h3 class="text-lg font-semibold mb-4">Invoices</h3>
-                    <table class="w-full">
+                <!-- Usage Table -->
+                <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+                    <div class="px-6 py-4 border-b">
+                        <h3 class="text-lg font-semibold text-gray-900">Detailed Usage Breakdown</h3>
+                    </div>
+                    <table class="min-w-full">
                         <thead class="bg-gray-50">
                             <tr>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Download</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Model</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Requests</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tokens In</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tokens Out</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cost</th>
                             </tr>
                         </thead>
-                        <tbody id="invoicesTable">
-                            <!-- Invoices will be loaded here -->
+                        <tbody id="usageTable" class="bg-white divide-y divide-gray-200">
+                            <!-- Usage data will be loaded here -->
                         </tbody>
                     </table>
                 </div>
             </section>
 
             <!-- Models Section -->
-            <section id="models" class="content-section hidden">
-                <h2 class="text-2xl font-bold mb-6">Available Models</h2>
+            <section id="models" class="content-section hidden p-6 animate-fade-in">
+                <h2 class="text-2xl font-bold text-gray-900 mb-6">Available Models</h2>
 
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    <div class="bg-white rounded-lg p-6 shadow">
-                        <div class="flex items-center justify-between mb-4">
-                            <h3 class="text-lg font-semibold">GPT-4</h3>
-                            <span class="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800">Available</span>
-                        </div>
-                        <p class="text-gray-600 text-sm mb-4">Most capable GPT-4 model for complex tasks</p>
-                        <div class="text-sm text-gray-500">
-                            <div>Context: 128K tokens</div>
-                            <div>Cost: $0.01/1K tokens</div>
+                <!-- Model Categories -->
+                <div class="flex gap-4 mb-6">
+                    <button onclick="filterModels('all')" class="model-filter-btn active px-4 py-2 bg-purple-600 text-white rounded-lg">All Models</button>
+                    <button onclick="filterModels('flagship')" class="model-filter-btn px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50">Flagship</button>
+                    <button onclick="filterModels('standard')" class="model-filter-btn px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50">Standard</button>
+                    <button onclick="filterModels('fast')" class="model-filter-btn px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50">Fast</button>
+                </div>
+
+                <div id="modelsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <!-- Model cards will be loaded here -->
+                </div>
+            </section>
+
+            <!-- Playground Section -->
+            <section id="playground" class="content-section hidden p-6 animate-fade-in">
+                <h2 class="text-2xl font-bold text-gray-900 mb-6">API Playground</h2>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- Request Builder -->
+                    <div class="bg-white rounded-xl shadow-sm p-6">
+                        <h3 class="text-lg font-semibold text-gray-900 mb-4">Request</h3>
+
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Model</label>
+                                <select id="playgroundModel" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500">
+                                    <option value="gpt-4o">GPT-4o</option>
+                                    <option value="claude-sonnet-4-5">Claude Sonnet 4.5</option>
+                                    <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">System Prompt</label>
+                                <textarea id="playgroundSystem" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500" placeholder="You are a helpful assistant..."></textarea>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">User Message</label>
+                                <textarea id="playgroundMessage" rows="5" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500" placeholder="Enter your message..."></textarea>
+                            </div>
+
+                            <div class="flex gap-4">
+                                <div class="flex-1">
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Temperature</label>
+                                    <input type="range" id="playgroundTemp" min="0" max="2" step="0.1" value="0.7" class="w-full">
+                                    <span id="tempValue" class="text-sm text-gray-500">0.7</span>
+                                </div>
+                                <div class="flex-1">
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Max Tokens</label>
+                                    <input type="number" id="playgroundTokens" value="1000" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                                </div>
+                            </div>
+
+                            <button onclick="sendPlaygroundRequest()" class="w-full bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-all">
+                                <i class="fas fa-paper-plane mr-2"></i>Send Request
+                            </button>
                         </div>
                     </div>
-                    <div class="bg-white rounded-lg p-6 shadow">
-                        <div class="flex items-center justify-between mb-4">
-                            <h3 class="text-lg font-semibold">Claude 3 Opus</h3>
-                            <span class="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800">Available</span>
+
+                    <!-- Response -->
+                    <div class="bg-white rounded-xl shadow-sm p-6">
+                        <h3 class="text-lg font-semibold text-gray-900 mb-4">Response</h3>
+
+                        <div id="playgroundResponse" class="bg-gray-50 rounded-lg p-4 min-h-[400px]">
+                            <p class="text-gray-500">Response will appear here...</p>
                         </div>
-                        <p class="text-gray-600 text-sm mb-4">Anthropic's most powerful model</p>
-                        <div class="text-sm text-gray-500">
-                            <div>Context: 200K tokens</div>
-                            <div>Cost: $0.015/1K tokens</div>
-                        </div>
-                    </div>
-                    <div class="bg-white rounded-lg p-6 shadow">
-                        <div class="flex items-center justify-between mb-4">
-                            <h3 class="text-lg font-semibold">GPT-3.5 Turbo</h3>
-                            <span class="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800">Available</span>
-                        </div>
-                        <p class="text-gray-600 text-sm mb-4">Fast and cost-effective for simple tasks</p>
-                        <div class="text-sm text-gray-500">
-                            <div>Context: 16K tokens</div>
-                            <div>Cost: $0.001/1K tokens</div>
+
+                        <div class="mt-4 flex justify-between text-sm text-gray-500">
+                            <span>Tokens: <span id="responseTokens">0</span></span>
+                            <span>Latency: <span id="responseLatency">0ms</span></span>
+                            <span>Cost: <span id="responseCost">$0.00</span></span>
                         </div>
                     </div>
                 </div>
             </section>
 
-            <!-- Settings Section -->
-            <section id="settings" class="content-section hidden">
-                <h2 class="text-2xl font-bold mb-6">Settings</h2>
+            <!-- Request Logs Section -->
+            <section id="logs" class="content-section hidden p-6 animate-fade-in">
+                <h2 class="text-2xl font-bold text-gray-900 mb-6">Request Logs</h2>
 
-                <div class="bg-white rounded-lg p-6 shadow mb-6">
-                    <h3 class="text-lg font-semibold mb-4">Profile Settings</h3>
-                    <form id="profileForm">
-                        <div class="mb-4">
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
-                            <input type="text" id="settingsFullName" class="w-full px-4 py-2 border rounded-lg" />
+                <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+                    <div class="px-6 py-4 border-b flex justify-between items-center">
+                        <div class="flex gap-4">
+                            <input type="search" placeholder="Search logs..." class="px-3 py-2 border border-gray-300 rounded-lg">
+                            <select class="px-3 py-2 border border-gray-300 rounded-lg">
+                                <option>All Models</option>
+                                <option>GPT-4</option>
+                                <option>Claude</option>
+                                <option>Gemini</option>
+                            </select>
+                            <select class="px-3 py-2 border border-gray-300 rounded-lg">
+                                <option>All Status</option>
+                                <option>Success</option>
+                                <option>Error</option>
+                            </select>
                         </div>
-                        <div class="mb-4">
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Company</label>
-                            <input type="text" id="settingsCompany" class="w-full px-4 py-2 border rounded-lg" />
-                        </div>
-                        <button type="submit" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700">
-                            Save Profile
+                        <button class="text-purple-600 hover:text-purple-700">
+                            <i class="fas fa-sync-alt mr-2"></i>Refresh
                         </button>
-                    </form>
+                    </div>
+
+                    <table class="min-w-full">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Model</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tokens</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Latency</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cost</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="logsTable" class="bg-white divide-y divide-gray-200">
+                            <!-- Logs will be loaded here -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Billing Section -->
+            <section id="billing" class="content-section hidden p-6 animate-fade-in">
+                <h2 class="text-2xl font-bold text-gray-900 mb-6">Billing & Subscription</h2>
+
+                <!-- Current Plan -->
+                <div class="bg-gradient-to-r from-purple-600 to-purple-800 rounded-xl p-6 text-white mb-6">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <h3 class="text-2xl font-bold mb-2">Free Plan</h3>
+                            <p class="text-purple-100 mb-4">Perfect for getting started with AI orchestration</p>
+                            <div class="flex gap-6 text-sm">
+                                <div>
+                                    <span class="text-purple-200">API Calls</span>
+                                    <p class="font-semibold">100/day</p>
+                                </div>
+                                <div>
+                                    <span class="text-purple-200">Tokens</span>
+                                    <p class="font-semibold">100K/month</p>
+                                </div>
+                                <div>
+                                    <span class="text-purple-200">Rate Limit</span>
+                                    <p class="font-semibold">10 req/min</p>
+                                </div>
+                            </div>
+                        </div>
+                        <button onclick="showUpgradeModal()" class="bg-white text-purple-600 px-6 py-3 rounded-lg font-semibold hover:bg-purple-50 transition-all">
+                            Upgrade Plan
+                        </button>
+                    </div>
                 </div>
 
-                <div class="bg-white rounded-lg p-6 shadow mb-6">
-                    <h3 class="text-lg font-semibold mb-4">API Settings</h3>
-                    <div class="mb-4">
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Default Model</label>
-                        <select id="defaultModel" class="w-full px-4 py-2 border rounded-lg">
-                            <option value="gpt-4">GPT-4</option>
-                            <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
-                            <option value="claude-3-opus">Claude 3 Opus</option>
-                        </select>
+                <!-- Payment Methods -->
+                <div class="bg-white rounded-xl shadow-sm p-6 mb-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-lg font-semibold text-gray-900">Payment Methods</h3>
+                        <button onclick="addPaymentMethod()" class="text-purple-600 hover:text-purple-700">
+                            <i class="fas fa-plus mr-2"></i>Add Payment Method
+                        </button>
                     </div>
-                    <div class="mb-4">
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Rate Limit Alerts</label>
-                        <label class="flex items-center">
-                            <input type="checkbox" id="rateLimitAlerts" class="mr-2" checked />
-                            <span>Send email when approaching rate limits</span>
-                        </label>
+                    <div id="paymentMethods">
+                        <p class="text-gray-500">No payment methods on file</p>
                     </div>
-                    <button onclick="saveApiSettings()" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700">
-                        Save Settings
-                    </button>
                 </div>
 
-                <div class="bg-white rounded-lg p-6 shadow">
-                    <h3 class="text-lg font-semibold mb-4 text-red-600">Danger Zone</h3>
-                    <p class="text-gray-600 mb-4">Permanently delete your account and all associated data.</p>
-                    <button onclick="deleteAccount()" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">
-                        Delete Account
-                    </button>
+                <!-- Invoices -->
+                <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+                    <div class="px-6 py-4 border-b">
+                        <h3 class="text-lg font-semibold text-gray-900">Billing History</h3>
+                    </div>
+                    <table class="min-w-full">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Invoice</th>
+                            </tr>
+                        </thead>
+                        <tbody id="invoicesTable" class="bg-white divide-y divide-gray-200">
+                            <tr>
+                                <td colspan="5" class="px-6 py-4 text-center text-gray-500">No billing history</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Settings Section -->
+            <section id="settings" class="content-section hidden p-6 animate-fade-in">
+                <h2 class="text-2xl font-bold text-gray-900 mb-6">Settings</h2>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- Settings Navigation -->
+                    <div class="bg-white rounded-xl shadow-sm p-4">
+                        <nav class="space-y-1">
+                            <a href="#" onclick="showSettingsSection('profile')" class="settings-nav-item active block px-4 py-2 text-gray-700 hover:bg-purple-50 hover:text-purple-600 rounded-lg transition-all">
+                                <i class="fas fa-user mr-2"></i>Profile
+                            </a>
+                            <a href="#" onclick="showSettingsSection('security')" class="settings-nav-item block px-4 py-2 text-gray-700 hover:bg-purple-50 hover:text-purple-600 rounded-lg transition-all">
+                                <i class="fas fa-shield-alt mr-2"></i>Security
+                            </a>
+                            <a href="#" onclick="showSettingsSection('notifications')" class="settings-nav-item block px-4 py-2 text-gray-700 hover:bg-purple-50 hover:text-purple-600 rounded-lg transition-all">
+                                <i class="fas fa-bell mr-2"></i>Notifications
+                            </a>
+                            <a href="#" onclick="showSettingsSection('api')" class="settings-nav-item block px-4 py-2 text-gray-700 hover:bg-purple-50 hover:text-purple-600 rounded-lg transition-all">
+                                <i class="fas fa-code mr-2"></i>API Settings
+                            </a>
+                            <a href="#" onclick="showSettingsSection('webhooks')" class="settings-nav-item block px-4 py-2 text-gray-700 hover:bg-purple-50 hover:text-purple-600 rounded-lg transition-all">
+                                <i class="fas fa-link mr-2"></i>Webhooks
+                            </a>
+                        </nav>
+                    </div>
+
+                    <!-- Settings Content -->
+                    <div class="lg:col-span-2 bg-white rounded-xl shadow-sm p-6">
+                        <!-- Profile Settings -->
+                        <div id="settings-profile" class="settings-content">
+                            <h3 class="text-lg font-semibold text-gray-900 mb-4">Profile Information</h3>
+                            <form onsubmit="updateProfile(event)">
+                                <div class="space-y-4">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
+                                        <input type="text" id="profileName" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                                        <input type="email" id="profileEmail" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500" disabled>
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">Company</label>
+                                        <input type="text" id="profileCompany" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">Timezone</label>
+                                        <select id="profileTimezone" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500">
+                                            <option>UTC</option>
+                                            <option>America/New_York</option>
+                                            <option>America/Los_Angeles</option>
+                                            <option>Europe/London</option>
+                                            <option>Asia/Tokyo</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="mt-6">
+                                    <button type="submit" class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-all">
+                                        Save Changes
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <!-- Security Settings -->
+                        <div id="settings-security" class="settings-content hidden">
+                            <h3 class="text-lg font-semibold text-gray-900 mb-4">Security Settings</h3>
+                            <div class="space-y-6">
+                                <div>
+                                    <h4 class="font-medium text-gray-900 mb-2">Change Password</h4>
+                                    <form onsubmit="changePassword(event)" class="space-y-4">
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700 mb-2">Current Password</label>
+                                            <input type="password" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                                        </div>
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700 mb-2">New Password</label>
+                                            <input type="password" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                                        </div>
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700 mb-2">Confirm New Password</label>
+                                            <input type="password" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                                        </div>
+                                        <button type="submit" class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-all">
+                                            Update Password
+                                        </button>
+                                    </form>
+                                </div>
+
+                                <div>
+                                    <h4 class="font-medium text-gray-900 mb-2">Two-Factor Authentication</h4>
+                                    <p class="text-sm text-gray-600 mb-4">Add an extra layer of security to your account</p>
+                                    <button class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-all">
+                                        Enable 2FA
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Other settings sections -->
+                        <div id="settings-notifications" class="settings-content hidden">
+                            <h3 class="text-lg font-semibold text-gray-900 mb-4">Notification Preferences</h3>
+                            <!-- Notification settings content -->
+                        </div>
+
+                        <div id="settings-api" class="settings-content hidden">
+                            <h3 class="text-lg font-semibold text-gray-900 mb-4">API Configuration</h3>
+                            <!-- API settings content -->
+                        </div>
+
+                        <div id="settings-webhooks" class="settings-content hidden">
+                            <h3 class="text-lg font-semibold text-gray-900 mb-4">Webhook Endpoints</h3>
+                            <!-- Webhooks settings content -->
+                        </div>
+                    </div>
                 </div>
             </section>
         </main>
     </div>
 
+    <!-- Modals -->
     <!-- Create API Key Modal -->
-    <div id="createKeyModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-        <div class="bg-white rounded-lg p-6 w-full max-w-md">
-            <h3 class="text-xl font-semibold mb-4">Create New API Key</h3>
+    <div id="createKeyModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center">
+        <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">Create New API Key</h3>
             <form onsubmit="createApiKey(event)">
-                <input
-                    type="text"
-                    name="keyName"
-                    placeholder="Key name (e.g., Production Key)"
-                    required
-                    class="w-full px-4 py-2 border rounded-lg mb-4"
-                >
-                <div class="flex justify-end space-x-2">
-                    <button type="button" onclick="hideCreateKeyModal()" class="px-4 py-2 text-gray-600 hover:text-gray-800">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Key Name</label>
+                    <input type="text" id="keyName" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500" placeholder="Production API Key">
+                </div>
+                <div class="flex justify-end gap-3">
+                    <button type="button" onclick="closeCreateKeyModal()" class="px-4 py-2 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 transition-all">
                         Cancel
                     </button>
-                    <button type="submit" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700">
+                    <button type="submit" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-all">
                         Create Key
                     </button>
                 </div>
@@ -356,49 +703,31 @@
         </div>
     </div>
 
-    <!-- Key Created Modal -->
-    <div id="keyCreatedModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-        <div class="bg-white rounded-lg p-6 w-full max-w-md">
-            <h3 class="text-xl font-semibold mb-4">API Key Created</h3>
-            <div class="bg-yellow-50 p-4 rounded-lg mb-4">
-                <p class="text-sm text-yellow-800 mb-2">
-                    <i class="fas fa-exclamation-triangle mr-2"></i>
-                    Save this key now. You won't be able to see it again!
-                </p>
-                <div class="bg-gray-100 p-2 rounded font-mono text-sm break-all" id="newApiKey">
-                    <!-- Key will be shown here -->
-                </div>
-            </div>
-            <button onclick="copyApiKey()" class="w-full px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700">
-                <i class="fas fa-copy mr-2"></i> Copy Key
-            </button>
-            <button onclick="hideKeyCreatedModal()" class="w-full mt-2 px-4 py-2 text-gray-600 hover:text-gray-800">
-                Done
-            </button>
-        </div>
-    </div>
-
     <script>
         // Configuration
         const API_BASE = window.location.origin;
-        let stripe = null; // Will be initialized after loading config
+        let stripe = null;
+        let currentUser = null;
+        let usageChart = null;
+        let modelChart = null;
 
-        // Check authentication
-        const token = localStorage.getItem('orchestral_token');
-        const user = JSON.parse(localStorage.getItem('orchestral_user') || '{}');
-
-        if (!token) {
-            window.location.href = '/auth';
-        }
-
-        // Set up axios defaults
-        axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-
-        // Initialize dashboard
+        // Initialize
         document.addEventListener('DOMContentLoaded', async () => {
-            document.getElementById('userName').textContent = user.full_name || user.email;
+            // Check authentication
+            const token = localStorage.getItem('orchestral_token');
+            if (!token) {
+                window.location.href = '/auth';
+                return;
+            }
 
-            // Load Stripe configuration
+            // Set auth headers for axios
+            axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+
+            // Load user data
+            currentUser = JSON.parse(localStorage.getItem('orchestral_user') || '{}');
+            updateUserInfo();
+
+            // Load Stripe
             try {
                 const configResponse = await fetch('/billing/config');
                 if (configResponse.ok) {
@@ -408,12 +737,27 @@
                     }
                 }
             } catch (error) {
-                // Failed to load Stripe config
+                console.error('Failed to load Stripe:', error);
             }
 
+            // Initialize dashboard
             await loadDashboardData();
             setupNavigation();
+            loadNotifications();
+
+            // Set up auto-refresh
+            setInterval(loadNotifications, 30000);
         });
+
+        // User info
+        function updateUserInfo() {
+            if (currentUser) {
+                document.getElementById('userName').textContent = currentUser.full_name || 'User';
+                document.getElementById('userEmail').textContent = currentUser.email || '';
+                document.getElementById('userTier').textContent = `${(currentUser.tier || 'free').charAt(0).toUpperCase() + (currentUser.tier || 'free').slice(1)} Tier`;
+                document.getElementById('userInitial').textContent = (currentUser.full_name || 'U')[0].toUpperCase();
+            }
+        }
 
         // Navigation
         function setupNavigation() {
@@ -424,8 +768,12 @@
                     const target = e.currentTarget.getAttribute('href').substring(1);
                     showSection(target);
 
-                    links.forEach(l => l.classList.remove('active', 'bg-purple-50', 'text-purple-600'));
+                    links.forEach(l => {
+                        l.classList.remove('active', 'bg-purple-50', 'text-purple-600');
+                        l.classList.add('text-gray-700');
+                    });
                     e.currentTarget.classList.add('active', 'bg-purple-50', 'text-purple-600');
+                    e.currentTarget.classList.remove('text-gray-700');
                 });
             });
         }
@@ -447,10 +795,13 @@
                         loadBillingInfo();
                         break;
                     case 'usage':
-                        loadUsageData();
+                        loadUsageAnalytics();
                         break;
                     case 'models':
-                        // Models are static for now
+                        loadModels();
+                        break;
+                    case 'logs':
+                        loadRequestLogs();
                         break;
                     case 'settings':
                         loadSettingsData();
@@ -459,51 +810,57 @@
             }
         }
 
-        // Load dashboard data
+        // Dashboard data
         async function loadDashboardData() {
             try {
-                // Load dashboard stats
                 const stats = await axios.get(`${API_BASE}/dashboard/stats`);
 
-                document.getElementById('apiCallsToday').textContent = stats.data.api_calls_today || 0;
+                document.getElementById('apiCallsToday').textContent = formatNumber(stats.data.api_calls_today || 0);
                 document.getElementById('tokensUsed').textContent = formatNumber(stats.data.tokens_used || 0);
                 document.getElementById('currentTier').textContent = (stats.data.tier || 'Free').charAt(0).toUpperCase() + (stats.data.tier || 'Free').slice(1);
                 document.getElementById('monthlyCost').textContent = `$${stats.data.monthly_cost || 0}`;
 
-                // Load usage chart with real data
+                // Load charts
                 loadUsageChart(stats.data.usage_history);
+                loadModelChart(stats.data.model_distribution);
+
+                // Load recent activity
+                loadRecentActivity(stats.data.recent_activity);
             } catch (error) {
-                // Set default values on error
-                document.getElementById('apiCallsToday').textContent = '0';
-                document.getElementById('tokensUsed').textContent = '0';
-                document.getElementById('currentTier').textContent = 'Free';
-                document.getElementById('monthlyCost').textContent = '$0';
+                console.error('Failed to load dashboard data:', error);
             }
         }
 
-        // Load usage chart
+        // Charts
         function loadUsageChart(historyData) {
             const ctx = document.getElementById('usageChart').getContext('2d');
 
-            // Use provided data or defaults
             const labels = historyData ? historyData.map(d => d.date) : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
             const data = historyData ? historyData.map(d => d.calls) : [65, 59, 80, 81, 56, 55, 40];
 
-            new Chart(ctx, {
+            if (usageChart) {
+                usageChart.destroy();
+            }
+
+            usageChart = new Chart(ctx, {
                 type: 'line',
                 data: {
                     labels: labels,
                     datasets: [{
                         label: 'API Calls',
                         data: data,
-                        borderColor: 'rgb(102, 126, 234)',
-                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
-                        tension: 0.4
+                        borderColor: 'rgb(147, 51, 234)',
+                        backgroundColor: 'rgba(147, 51, 234, 0.1)',
+                        tension: 0.4,
+                        fill: true
                     }]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
+                    animation: {
+                        duration: 1000
+                    },
                     plugins: {
                         legend: {
                             display: false
@@ -511,29 +868,215 @@
                     },
                     scales: {
                         y: {
-                            beginAtZero: true
+                            beginAtZero: true,
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            }
                         }
                     }
                 }
             });
         }
 
-        // API Keys Management
+        function loadModelChart(distributionData) {
+            const ctx = document.getElementById('modelChart').getContext('2d');
+
+            const labels = distributionData ? distributionData.map(d => d.model) : ['GPT-4o', 'Claude', 'Gemini'];
+            const data = distributionData ? distributionData.map(d => d.count) : [45, 30, 25];
+
+            if (modelChart) {
+                modelChart.destroy();
+            }
+
+            modelChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: [
+                            'rgba(147, 51, 234, 0.8)',
+                            'rgba(59, 130, 246, 0.8)',
+                            'rgba(16, 185, 129, 0.8)'
+                        ],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: {
+                        animateRotate: true,
+                        duration: 1000
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+        }
+
+        // Notifications
+        async function loadNotifications() {
+            try {
+                const response = await axios.get(`${API_BASE}/notifications`);
+                const notifications = response.data.notifications;
+                const unreadCount = response.data.unread_count;
+
+                // Update badge
+                updateNotificationBadge(unreadCount);
+
+                // Render notifications
+                renderNotifications(notifications);
+            } catch (error) {
+                console.error('Failed to load notifications:', error);
+            }
+        }
+
+        function updateNotificationBadge(count) {
+            const badge = document.getElementById('notificationBadge');
+            if (count > 0) {
+                badge.textContent = count > 99 ? '99+' : count;
+                badge.classList.remove('hidden');
+            } else {
+                badge.classList.add('hidden');
+            }
+        }
+
+        function renderNotifications(notifications) {
+            const listContainer = document.getElementById('notificationsList');
+
+            if (notifications.length === 0) {
+                listContainer.innerHTML = `
+                    <div class="p-8 text-center">
+                        <i class="fas fa-bell-slash text-3xl text-gray-300 mb-3"></i>
+                        <p class="text-gray-500">No notifications</p>
+                    </div>
+                `;
+                return;
+            }
+
+            listContainer.innerHTML = notifications.map(n => `
+                <div class="p-4 border-b hover:bg-gray-50 transition-all ${!n.read ? 'bg-purple-50' : ''}">
+                    <div class="flex items-start">
+                        <div class="flex-shrink-0">
+                            <div class="w-8 h-8 rounded-full ${getNotificationColor(n.type)} flex items-center justify-center text-white text-sm">
+                                <i class="${n.icon || 'fas fa-bell'}"></i>
+                            </div>
+                        </div>
+                        <div class="ml-3 flex-1">
+                            <p class="text-sm font-medium text-gray-900">${n.title}</p>
+                            <p class="text-sm text-gray-500 mt-1">${n.message}</p>
+                            ${n.link ? `<a href="${n.link}" class="text-xs text-purple-600 hover:text-purple-700 mt-1 inline-block">View details →</a>` : ''}
+                        </div>
+                        <div class="ml-2">
+                            <button onclick="deleteNotification('${n.id}')" class="text-gray-400 hover:text-red-600">
+                                <i class="fas fa-times text-xs"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+
+            document.getElementById('notificationCount').textContent =
+                notifications.filter(n => !n.read).length === 0 ? 'All caught up!' : `${notifications.filter(n => !n.read).length} unread`;
+        }
+
+        function getNotificationColor(type) {
+            const colors = {
+                'info': 'bg-blue-500',
+                'success': 'bg-green-500',
+                'warning': 'bg-yellow-500',
+                'error': 'bg-red-500',
+                'billing': 'bg-purple-500',
+                'api': 'bg-indigo-500',
+                'security': 'bg-red-600'
+            };
+            return colors[type] || 'bg-gray-500';
+        }
+
+        function toggleNotifications() {
+            const panel = document.getElementById('notificationPanel');
+            panel.classList.toggle('translate-x-full');
+        }
+
+        async function markAllAsRead() {
+            try {
+                await axios.post(`${API_BASE}/notifications/mark-all-read`);
+                loadNotifications();
+            } catch (error) {
+                console.error('Failed to mark as read:', error);
+            }
+        }
+
+        async function deleteNotification(id) {
+            try {
+                await axios.delete(`${API_BASE}/notifications/${id}`);
+                loadNotifications();
+            } catch (error) {
+                console.error('Failed to delete notification:', error);
+            }
+        }
+
+        // User menu
+        function toggleUserMenu() {
+            const menu = document.getElementById('userMenu');
+            menu.classList.toggle('hidden');
+        }
+
+        // Close dropdowns when clicking outside
+        document.addEventListener('click', (e) => {
+            const userMenu = document.getElementById('userMenu');
+            const userButton = e.target.closest('[onclick="toggleUserMenu()"]');
+            if (!userButton && !userMenu.contains(e.target)) {
+                userMenu.classList.add('hidden');
+            }
+        });
+
+        // API Keys
         async function loadApiKeys() {
             try {
                 const response = await axios.get(`${API_BASE}/auth/api-keys`);
                 const tbody = document.getElementById('apiKeysTable');
 
+                if (response.data.keys.length === 0) {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="6" class="px-6 py-8 text-center text-gray-500">
+                                <i class="fas fa-key text-3xl text-gray-300 mb-3"></i>
+                                <p>No API keys yet</p>
+                                <p class="text-sm mt-2">Create your first API key to get started</p>
+                            </td>
+                        </tr>
+                    `;
+                    return;
+                }
+
                 tbody.innerHTML = response.data.keys.map(key => `
                     <tr>
-                        <td class="px-6 py-4">${key.name}</td>
+                        <td class="px-6 py-4 font-medium">${key.name}</td>
                         <td class="px-6 py-4">
                             <code class="text-sm bg-gray-100 px-2 py-1 rounded">
                                 orch-****${key.key_id.slice(-8)}
                             </code>
+                            <button onclick="copyToClipboard('${key.raw_key}')" class="ml-2 text-gray-500 hover:text-purple-600">
+                                <i class="fas fa-copy"></i>
+                            </button>
                         </td>
                         <td class="px-6 py-4 text-sm text-gray-500">${formatDate(key.created_at)}</td>
                         <td class="px-6 py-4 text-sm text-gray-500">${key.last_used ? formatDate(key.last_used) : 'Never'}</td>
+                        <td class="px-6 py-4">
+                            <span class="px-2 py-1 text-xs rounded-full ${key.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">
+                                ${key.is_active ? 'Active' : 'Revoked'}
+                            </span>
+                        </td>
                         <td class="px-6 py-4">
                             <button onclick="revokeKey('${key.key_id}')" class="text-red-600 hover:text-red-700">
                                 <i class="fas fa-trash"></i>
@@ -542,218 +1085,375 @@
                     </tr>
                 `).join('');
             } catch (error) {
-                // Failed to load API keys
+                console.error('Failed to load API keys:', error);
             }
         }
 
-        async function createApiKey(event) {
-            event.preventDefault();
-            const formData = new FormData(event.target);
-
-            try {
-                const response = await axios.post(`${API_BASE}/auth/api-keys`, {
-                    name: formData.get('keyName')
-                });
-
-                document.getElementById('newApiKey').textContent = response.data.key;
-                hideCreateKeyModal();
-                document.getElementById('keyCreatedModal').classList.remove('hidden');
-
-                // Reload keys list
-                await loadApiKeys();
-            } catch (error) {
-                alert('Failed to create API key: ' + error.response?.data?.detail);
-            }
-        }
-
-        function copyApiKey() {
-            const keyText = document.getElementById('newApiKey').textContent;
-            navigator.clipboard.writeText(keyText);
-            alert('API key copied to clipboard!');
-        }
-
-        async function revokeKey(keyId) {
-            if (!confirm('Are you sure you want to revoke this API key?')) return;
-
-            try {
-                await axios.delete(`${API_BASE}/auth/api-keys/${keyId}`);
-                await loadApiKeys();
-            } catch (error) {
-                alert('Failed to revoke key: ' + error.response?.data?.detail);
-            }
-        }
-
-        // Billing Management
-        async function loadBillingInfo() {
-            try {
-                const response = await axios.get(`${API_BASE}/dashboard/billing/status`);
-
-                const tierName = (response.data.current_tier || 'free').charAt(0).toUpperCase() +
-                               (response.data.current_tier || 'free').slice(1);
-                document.getElementById('planName').textContent = tierName;
-
-                // Update plan details based on tier
-                const planDetails = {
-                    'Free': '100K tokens/month • 10 req/min',
-                    'Starter': '1M tokens/month • 60 req/min',
-                    'Pro': '10M tokens/month • 300 req/min',
-                    'Enterprise': 'Unlimited • Custom limits'
-                };
-                document.getElementById('planDetails').textContent = planDetails[tierName] || '100K tokens/month • 10 req/min';
-
-                // Load payment methods
-                const paymentSection = document.getElementById('paymentMethodSection');
-                if (response.data.payment_methods && response.data.payment_methods.length > 0) {
-                    paymentSection.innerHTML = response.data.payment_methods.map(pm => `
-                        <div class="flex items-center justify-between p-3 border rounded-lg">
-                            <div>
-                                <i class="fab fa-cc-${pm.card_brand?.toLowerCase()} mr-2"></i>
-                                •••• ${pm.card_last4}
-                            </div>
-                            <button onclick="removePaymentMethod('${pm.payment_method_id}')" class="text-red-600">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </div>
-                    `).join('');
-                } else {
-                    paymentSection.innerHTML = '<p class="text-gray-500">No payment methods on file</p>';
-                }
-
-                // Load invoices
-                const invoicesTable = document.getElementById('invoicesTable');
-                if (response.data.invoices && response.data.invoices.length > 0) {
-                    invoicesTable.innerHTML = response.data.invoices.map(inv => `
-                        <tr>
-                            <td class="px-6 py-4">${formatDate(inv.created_at)}</td>
-                            <td class="px-6 py-4">$${(inv.amount_paid / 100).toFixed(2)}</td>
-                            <td class="px-6 py-4">
-                                <span class="px-2 py-1 text-xs rounded-full ${
-                                    inv.status === 'paid' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
-                                }">
-                                    ${inv.status}
-                                </span>
-                            </td>
-                            <td class="px-6 py-4">
-                                ${inv.invoice_pdf ? `<a href="${inv.invoice_pdf}" target="_blank" class="text-purple-600 hover:text-purple-700">
-                                    <i class="fas fa-download"></i>
-                                </a>` : '-'}
-                            </td>
-                        </tr>
-                    `).join('');
-                } else {
-                    invoicesTable.innerHTML = '<tr><td colspan="4" class="text-center py-4 text-gray-500">No invoices yet</td></tr>';
-                }
-            } catch (error) {
-                // Set defaults on error
-                document.getElementById('planName').textContent = 'Free';
-                document.getElementById('planDetails').textContent = '100K tokens/month • 10 req/min';
-                document.getElementById('paymentMethodSection').innerHTML = '<p class="text-gray-500">No payment methods on file</p>';
-                document.getElementById('invoicesTable').innerHTML = '<tr><td colspan="4" class="text-center py-4 text-gray-500">No invoices yet</td></tr>';
-            }
-        }
-
-        async function changePlan() {
-            window.location.href = '/#pricing';
-        }
-
-        // Load usage data
-        async function loadUsageData() {
-            try {
-                const response = await axios.get(`${API_BASE}/dashboard/usage`);
-
-                // Update usage display with detailed information
-            } catch (error) {
-                // Failed to load usage data
-            }
-        }
-
-        async function addPaymentMethod() {
-            // For now, show upgrade message since Stripe isn't configured
-            alert('Payment processing will be available soon. Please contact support to upgrade your plan.');
-        }
-
-        // Load settings data
-        async function loadSettingsData() {
-            if (user) {
-                document.getElementById('settingsFullName').value = user.full_name || '';
-                document.getElementById('settingsCompany').value = user.company || '';
-            }
-        }
-
-        // Settings functions
-        async function saveApiSettings() {
-            alert('Settings saved successfully!');
-        }
-
-        async function deleteAccount() {
-            if (confirm('Are you sure you want to delete your account? This action cannot be undone.')) {
-                try {
-                    // Would call delete endpoint here
-                    alert('Please contact support to delete your account.');
-                } catch (error) {
-                    alert('Failed to delete account');
-                }
-            }
-        }
-
-        // Profile form handling
-        document.addEventListener('DOMContentLoaded', () => {
-            const profileForm = document.getElementById('profileForm');
-            if (profileForm) {
-                profileForm.addEventListener('submit', async (e) => {
-                    e.preventDefault();
-                    try {
-                        await axios.put(`${API_BASE}/auth/me`, {
-                            full_name: document.getElementById('settingsFullName').value,
-                            company: document.getElementById('settingsCompany').value
-                        });
-                        alert('Profile updated successfully!');
-                    } catch (error) {
-                        alert('Failed to update profile');
-                    }
-                });
-            }
-        });
-
-        // Modal functions
         function showCreateKeyModal() {
             document.getElementById('createKeyModal').classList.remove('hidden');
         }
 
-        function hideCreateKeyModal() {
+        function closeCreateKeyModal() {
             document.getElementById('createKeyModal').classList.add('hidden');
         }
 
-        function hideKeyCreatedModal() {
-            document.getElementById('keyCreatedModal').classList.add('hidden');
+        async function createApiKey(event) {
+            event.preventDefault();
+            const name = document.getElementById('keyName').value;
+
+            try {
+                const response = await axios.post(`${API_BASE}/auth/api-keys`, { name });
+                closeCreateKeyModal();
+                loadApiKeys();
+
+                // Show success notification
+                showToast('API key created successfully', 'success');
+            } catch (error) {
+                console.error('Failed to create API key:', error);
+                showToast('Failed to create API key', 'error');
+            }
         }
 
-        function toggleUserMenu() {
-            document.getElementById('userMenu').classList.toggle('hidden');
+        async function revokeKey(keyId) {
+            if (!confirm('Are you sure you want to revoke this API key?')) {
+                return;
+            }
+
+            try {
+                await axios.delete(`${API_BASE}/auth/api-keys/${keyId}`);
+                loadApiKeys();
+                showToast('API key revoked', 'success');
+            } catch (error) {
+                console.error('Failed to revoke key:', error);
+                showToast('Failed to revoke API key', 'error');
+            }
         }
 
-        function logout() {
+        // Models
+        async function loadModels() {
+            try {
+                const response = await axios.get(`${API_BASE}/models`);
+                const models = response.data.models;
+
+                const modelsGrid = document.getElementById('modelsGrid');
+                modelsGrid.innerHTML = models.map(model => `
+                    <div class="bg-white rounded-xl shadow-sm p-6 hover:shadow-lg transition-all cursor-pointer" onclick="showModelDetails('${model.model_id}')">
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="w-12 h-12 rounded-lg ${getProviderColor(model.provider)} flex items-center justify-center text-white">
+                                <i class="${getProviderIcon(model.provider)} text-xl"></i>
+                            </div>
+                            <span class="px-2 py-1 text-xs rounded-full ${getTierColor(model.tier)}">
+                                ${model.tier}
+                            </span>
+                        </div>
+                        <h3 class="font-semibold text-gray-900 mb-2">${model.name}</h3>
+                        <p class="text-sm text-gray-500 mb-4">${model.description || 'Advanced AI model'}</p>
+                        <div class="space-y-2 text-sm">
+                            <div class="flex justify-between">
+                                <span class="text-gray-500">Context</span>
+                                <span class="font-medium">${formatNumber(model.context_window)}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-500">Price</span>
+                                <span class="font-medium">$${model.input_cost_per_million}/M</span>
+                            </div>
+                        </div>
+                        <button class="mt-4 w-full bg-purple-50 text-purple-600 px-3 py-2 rounded-lg hover:bg-purple-100 transition-all text-sm font-medium">
+                            Test Model →
+                        </button>
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error('Failed to load models:', error);
+            }
+        }
+
+        function getProviderColor(provider) {
+            const colors = {
+                'openai': 'bg-green-500',
+                'anthropic': 'bg-orange-500',
+                'google': 'bg-blue-500'
+            };
+            return colors[provider] || 'bg-gray-500';
+        }
+
+        function getProviderIcon(provider) {
+            const icons = {
+                'openai': 'fas fa-robot',
+                'anthropic': 'fas fa-brain',
+                'google': 'fas fa-globe'
+            };
+            return icons[provider] || 'fas fa-microchip';
+        }
+
+        function getTierColor(tier) {
+            const colors = {
+                'FLAGSHIP': 'bg-purple-100 text-purple-800',
+                'STANDARD': 'bg-blue-100 text-blue-800',
+                'FAST': 'bg-green-100 text-green-800'
+            };
+            return colors[tier] || 'bg-gray-100 text-gray-800';
+        }
+
+        function filterModels(filter) {
+            // Update filter buttons
+            document.querySelectorAll('.model-filter-btn').forEach(btn => {
+                btn.classList.remove('bg-purple-600', 'text-white');
+                btn.classList.add('bg-white', 'text-gray-700', 'border', 'border-gray-300');
+            });
+            event.target.classList.remove('bg-white', 'text-gray-700', 'border', 'border-gray-300');
+            event.target.classList.add('bg-purple-600', 'text-white');
+
+            // Filter models (implement filtering logic)
+            loadModels(); // For now, just reload
+        }
+
+        // Billing
+        async function loadBillingInfo() {
+            try {
+                const response = await axios.get(`${API_BASE}/dashboard/billing/status`);
+                // Update billing UI
+            } catch (error) {
+                console.error('Failed to load billing info:', error);
+            }
+        }
+
+        async function addPaymentMethod() {
+            if (!stripe) {
+                showToast('Payment system not available', 'error');
+                return;
+            }
+
+            try {
+                const response = await axios.post(`${API_BASE}/billing/checkout`, {
+                    plan: 'starter'
+                });
+
+                if (response.data.checkout_url) {
+                    window.location.href = response.data.checkout_url;
+                }
+            } catch (error) {
+                console.error('Failed to add payment method:', error);
+                showToast('Failed to add payment method', 'error');
+            }
+        }
+
+        // Settings
+        function showSettingsSection(section) {
+            document.querySelectorAll('.settings-content').forEach(content => {
+                content.classList.add('hidden');
+            });
+            document.getElementById(`settings-${section}`).classList.remove('hidden');
+
+            document.querySelectorAll('.settings-nav-item').forEach(item => {
+                item.classList.remove('active', 'bg-purple-50', 'text-purple-600');
+            });
+            event.target.classList.add('active', 'bg-purple-50', 'text-purple-600');
+        }
+
+        async function loadSettingsData() {
+            // Load user profile data
+            if (currentUser) {
+                document.getElementById('profileName').value = currentUser.full_name || '';
+                document.getElementById('profileEmail').value = currentUser.email || '';
+                document.getElementById('profileCompany').value = currentUser.company || '';
+            }
+        }
+
+        async function updateProfile(event) {
+            event.preventDefault();
+
+            try {
+                const response = await axios.put(`${API_BASE}/auth/me`, {
+                    full_name: document.getElementById('profileName').value,
+                    company: document.getElementById('profileCompany').value
+                });
+
+                // Update local storage
+                currentUser.full_name = document.getElementById('profileName').value;
+                currentUser.company = document.getElementById('profileCompany').value;
+                localStorage.setItem('orchestral_user', JSON.stringify(currentUser));
+
+                updateUserInfo();
+                showToast('Profile updated successfully', 'success');
+            } catch (error) {
+                console.error('Failed to update profile:', error);
+                showToast('Failed to update profile', 'error');
+            }
+        }
+
+        // Utility functions
+        function formatNumber(num) {
+            if (!num) return '0';
+            if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+            if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+            return num.toString();
+        }
+
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        }
+
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text);
+            showToast('Copied to clipboard', 'success');
+        }
+
+        function showToast(message, type = 'info') {
+            // Create toast element
+            const toast = document.createElement('div');
+            toast.className = `fixed bottom-4 right-4 px-6 py-3 rounded-lg shadow-lg z-50 animate-slide-in ${
+                type === 'success' ? 'bg-green-500' : type === 'error' ? 'bg-red-500' : 'bg-blue-500'
+            } text-white`;
+            toast.innerHTML = `
+                <div class="flex items-center">
+                    <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'times-circle' : 'info-circle'} mr-2"></i>
+                    <span>${message}</span>
+                </div>
+            `;
+            document.body.appendChild(toast);
+
+            setTimeout(() => {
+                toast.remove();
+            }, 3000);
+        }
+
+        // Logout
+        async function logout() {
+            try {
+                await axios.post(`${API_BASE}/auth/logout`);
+            } catch (error) {
+                // Ignore logout errors
+            }
+
             localStorage.removeItem('orchestral_token');
             localStorage.removeItem('orchestral_user');
             window.location.href = '/auth';
         }
 
-        // Utility functions
-        function formatNumber(num) {
-            if (num >= 1000000) {
-                return (num / 1000000).toFixed(1) + 'M';
-            } else if (num >= 1000) {
-                return (num / 1000).toFixed(1) + 'K';
+        // Playground
+        document.getElementById('playgroundTemp').addEventListener('input', (e) => {
+            document.getElementById('tempValue').textContent = e.target.value;
+        });
+
+        async function sendPlaygroundRequest() {
+            const model = document.getElementById('playgroundModel').value;
+            const system = document.getElementById('playgroundSystem').value;
+            const message = document.getElementById('playgroundMessage').value;
+            const temperature = parseFloat(document.getElementById('playgroundTemp').value);
+            const maxTokens = parseInt(document.getElementById('playgroundTokens').value);
+
+            if (!message) {
+                showToast('Please enter a message', 'error');
+                return;
             }
-            return num.toString();
+
+            const responseDiv = document.getElementById('playgroundResponse');
+            responseDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating response...';
+
+            const startTime = Date.now();
+
+            try {
+                const response = await axios.post(`${API_BASE}/v1/completions`, {
+                    model: model,
+                    messages: [
+                        { role: 'system', content: system || 'You are a helpful assistant.' },
+                        { role: 'user', content: message }
+                    ],
+                    temperature: temperature,
+                    max_tokens: maxTokens
+                });
+
+                const latency = Date.now() - startTime;
+
+                responseDiv.innerHTML = `<pre class="whitespace-pre-wrap">${response.data.content}</pre>`;
+                document.getElementById('responseTokens').textContent = response.data.usage?.total_tokens || 0;
+                document.getElementById('responseLatency').textContent = `${latency}ms`;
+                document.getElementById('responseCost').textContent = `$${(response.data.usage?.total_cost || 0).toFixed(4)}`;
+            } catch (error) {
+                responseDiv.innerHTML = `<div class="text-red-600">Error: ${error.response?.data?.detail || error.message}</div>`;
+            }
         }
 
-        function formatDate(dateString) {
-            return new Date(dateString).toLocaleDateString('en-US', {
-                year: 'numeric',
-                month: 'short',
-                day: 'numeric'
-            });
+        // Recent Activity
+        function loadRecentActivity(activities) {
+            const container = document.getElementById('recentActivity');
+
+            if (!activities || activities.length === 0) {
+                container.innerHTML = `
+                    <p class="text-gray-500 text-center py-4">No recent activity</p>
+                `;
+                return;
+            }
+
+            container.innerHTML = activities.map(activity => `
+                <div class="flex items-center p-3 hover:bg-gray-50 rounded-lg transition-all">
+                    <div class="w-10 h-10 rounded-full ${getActivityColor(activity.type)} flex items-center justify-center text-white">
+                        <i class="${getActivityIcon(activity.type)}"></i>
+                    </div>
+                    <div class="ml-4 flex-1">
+                        <p class="text-sm font-medium text-gray-900">${activity.description}</p>
+                        <p class="text-xs text-gray-500">${getTimeAgo(activity.timestamp)}</p>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function getActivityColor(type) {
+            const colors = {
+                'api_call': 'bg-blue-500',
+                'key_created': 'bg-green-500',
+                'key_revoked': 'bg-red-500',
+                'billing': 'bg-purple-500'
+            };
+            return colors[type] || 'bg-gray-500';
+        }
+
+        function getActivityIcon(type) {
+            const icons = {
+                'api_call': 'fas fa-phone-volume',
+                'key_created': 'fas fa-key',
+                'key_revoked': 'fas fa-ban',
+                'billing': 'fas fa-credit-card'
+            };
+            return icons[type] || 'fas fa-circle';
+        }
+
+        function getTimeAgo(timestamp) {
+            const date = new Date(timestamp);
+            const now = new Date();
+            const seconds = Math.floor((now - date) / 1000);
+
+            if (seconds < 60) return 'Just now';
+            if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+            if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
+            return date.toLocaleDateString();
+        }
+
+        // Usage Analytics
+        async function loadUsageAnalytics() {
+            // Load detailed usage data
+            try {
+                const response = await axios.get(`${API_BASE}/dashboard/usage`);
+                // Update usage charts and tables
+            } catch (error) {
+                console.error('Failed to load usage data:', error);
+            }
+        }
+
+        // Request Logs
+        async function loadRequestLogs() {
+            // Load request logs
+            const tbody = document.getElementById('logsTable');
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="7" class="px-6 py-8 text-center text-gray-500">
+                        <i class="fas fa-list text-3xl text-gray-300 mb-3"></i>
+                        <p>No request logs available</p>
+                    </td>
+                </tr>
+            `;
         }
     </script>
 </body>

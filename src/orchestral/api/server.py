@@ -341,6 +341,10 @@ def create_app() -> FastAPI:
     # Include dashboard router
     from orchestral.api.dashboard import router as dashboard_router
     app.include_router(dashboard_router)
+
+    # Include notifications router
+    from orchestral.api.notifications import router as notifications_router
+    app.include_router(notifications_router)
     # Mount static files for landing page
     import os
     from pathlib import Path
@@ -374,6 +378,30 @@ def create_app() -> FastAPI:
             if dashboard_file.exists():
                 return FileResponse(str(dashboard_file))
             return {"error": "Dashboard page not found"}
+
+        @app.get("/terms", include_in_schema=False)
+        async def serve_terms_page():
+            """Serve the terms of service page."""
+            terms_file = static_dir / "terms.html"
+            if terms_file.exists():
+                return FileResponse(str(terms_file))
+            return {"error": "Terms page not found"}
+
+        @app.get("/privacy", include_in_schema=False)
+        async def serve_privacy_page():
+            """Serve the privacy policy page."""
+            privacy_file = static_dir / "privacy.html"
+            if privacy_file.exists():
+                return FileResponse(str(privacy_file))
+            return {"error": "Privacy page not found"}
+
+        @app.get("/about", include_in_schema=False)
+        async def serve_about_page():
+            """Serve the about page."""
+            about_file = static_dir / "about.html"
+            if about_file.exists():
+                return FileResponse(str(about_file))
+            return {"error": "About page not found"}
 
     return app
 

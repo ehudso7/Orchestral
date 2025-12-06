@@ -331,6 +331,17 @@ asyncio.run(main())</pre>
             loadPricing();
         });
 
+        // Check authentication on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            const token = localStorage.getItem('orchestral_token');
+            if (token) {
+                // User is logged in, redirect to dashboard
+                window.location.href = '/dashboard';
+                return;
+            }
+            setupNavigation();
+        });
+
         // Setup navigation
         function setupNavigation() {
             const token = localStorage.getItem('orchestral_token');
@@ -338,15 +349,9 @@ asyncio.run(main())</pre>
             const navAuth = document.getElementById('navAuth');
 
             if (token && user) {
-                // User is logged in
-                navAuth.innerHTML = `
-                    <span class="text-gray-300">Welcome, ${user.full_name || user.email}</span>
-                    <a href="/dashboard" class="bg-primary hover:bg-indigo-600 text-white px-4 py-2 rounded-lg font-semibold transition">
-                        Dashboard
-                    </a>
-                    <button onclick="logout()" class="text-gray-300 hover:text-white">
-                        Logout
-                    </button>
+                // User is logged in - redirect to dashboard
+                window.location.href = '/dashboard';
+                return;
                 `;
             } else {
                 // User is not logged in

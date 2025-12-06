@@ -406,13 +406,8 @@
 
                 // Store token and user data with API key
                 const userData = response.data.user;
-                // Store the API key temporarily if it's included in the response
-                if (userData.api_key) {
-                    // Show the API key to the user first
-                    showAlert(`Account created! Your API key: ${userData.api_key} (save this!)`, 'success');
-                } else {
-                    showAlert('Account created successfully! Redirecting...', 'success');
-                }
+                // Don't show API key in alerts - it's available in dashboard
+                showAlert('Account created successfully! Redirecting to dashboard...', 'success');
 
                 localStorage.setItem('orchestral_token', response.data.access_token);
                 localStorage.setItem('orchestral_user', JSON.stringify(userData));
