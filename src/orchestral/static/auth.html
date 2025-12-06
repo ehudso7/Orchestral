@@ -363,7 +363,16 @@
                 }
 
             } catch (error) {
-                showAlert(error.response?.data?.detail || 'Login failed. Please try again.');
+                console.error('Login error:', error);
+                let errorMessage = 'Login failed. Please try again.';
+                if (error.response) {
+                    errorMessage = error.response.data?.detail || `Server error: ${error.response.status}`;
+                } else if (error.request) {
+                    errorMessage = 'Unable to reach server. Please check your connection.';
+                } else {
+                    errorMessage = error.message || 'An unexpected error occurred.';
+                }
+                showAlert(errorMessage);
             } finally {
                 spinner.classList.add('hidden');
                 buttonText.textContent = 'Sign In';
@@ -426,7 +435,16 @@
                 }
 
             } catch (error) {
-                showAlert(error.response?.data?.detail || 'Signup failed. Please try again.');
+                console.error('Signup error:', error);
+                let errorMessage = 'Signup failed. Please try again.';
+                if (error.response) {
+                    errorMessage = error.response.data?.detail || `Server error: ${error.response.status}`;
+                } else if (error.request) {
+                    errorMessage = 'Unable to reach server. Please check your connection.';
+                } else {
+                    errorMessage = error.message || 'An unexpected error occurred.';
+                }
+                showAlert(errorMessage);
             } finally {
                 spinner.classList.add('hidden');
                 buttonText.textContent = 'Create Account';
