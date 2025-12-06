@@ -44,8 +44,9 @@ class OpenAIProvider(BaseProvider):
 
     provider = ModelProvider.OPENAI
 
-    # Models that require max_completion_tokens instead of max_tokens
-    REASONING_MODELS = {"o1", "o1-mini", "o1-preview", "o3", "o3-mini", "gpt-5.1"}
+    # Model prefixes that require max_completion_tokens instead of max_tokens
+    # These are reasoning models that don't support temperature, top_p, etc.
+    REASONING_MODEL_PREFIXES = frozenset({"o1", "o3"})
 
     # Map fictional/placeholder models to real ones
     MODEL_ALIASES = {
@@ -123,8 +124,58 @@ class OpenAIProvider(BaseProvider):
         return self.MODEL_ALIASES.get(model, model)
 
     def _needs_completion_tokens(self, model: str) -> bool:
-        """Check if model requires max_completion_tokens instead of max_tokens."""
-        return any(model.startswith(rm) for rm in self.REASONING_MODELS)
+        """Check if model requires max_completion_tokens instead of max_tokens.
+
+        Reasoning models (o1, o3 series) use max_completion_tokens and don't
+        support parameters like temperature, top_p, frequency_penalty, etc.
+        """
+        model_lower = model.lower()
+        # Check for exact match or prefix followed by hyphen (e.g., "o1-mini")
+        return any(
+            model_lower == prefix or model_lower.startswith(f"{prefix}-")
+            for prefix in self.REASONING_MODEL_PREFIXES
+        )
+
+    def _build_completion_params(
+        self, request: CompletionRequest, model: str, stream: bool
+    ) -> dict[str, Any]:
+        """Build parameters for OpenAI chat completion API.
+
+        Args:
+            request: The completion request
+            model: The resolved model name
+            stream: Whether to stream the response
+
+        Returns:
+            Dictionary of parameters for the API call
+        """
+        params: dict[str, Any] = {
+            "model": model,
+            "messages": self._convert_messages(request.messages),
+            "stream": stream,
+        }
+
+        # Reasoning models (o1, o3) use max_completion_tokens and don't support
+        # temperature, top_p, frequency_penalty, presence_penalty, or stop
+        if self._needs_completion_tokens(model):
+            if request.config.max_tokens is not None:
+                params["max_completion_tokens"] = request.config.max_tokens
+        else:
+            # Standard models use max_tokens and support all sampling params
+            if request.config.max_tokens is not None:
+                params["max_tokens"] = request.config.max_tokens
+            if request.config.temperature is not None:
+                params["temperature"] = request.config.temperature
+            if request.config.top_p is not None:
+                params["top_p"] = request.config.top_p
+            if request.config.frequency_penalty is not None:
+                params["frequency_penalty"] = request.config.frequency_penalty
+            if request.config.presence_penalty is not None:
+                params["presence_penalty"] = request.config.presence_penalty
+            if request.config.stop:
+                params["stop"] = request.config.stop
+
+        return params
 
     async def complete_async(
         self,
@@ -133,25 +184,7 @@ class OpenAIProvider(BaseProvider):
         """Generate a completion using OpenAI."""
         start_time = time.perf_counter()
         model = self._resolve_model(request.config.model)
-
-        # Build base parameters
-        params: dict[str, Any] = {
-            "model": model,
-            "messages": self._convert_messages(request.messages),
-            "stream": False,
-        }
-
-        # Handle max tokens - newer models use max_completion_tokens
-        if self._needs_completion_tokens(model):
-            params["max_completion_tokens"] = request.config.max_tokens
-        else:
-            params["max_tokens"] = request.config.max_tokens
-            params["temperature"] = request.config.temperature
-            params["top_p"] = request.config.top_p
-            params["frequency_penalty"] = request.config.frequency_penalty
-            params["presence_penalty"] = request.config.presence_penalty
-            if request.config.stop:
-                params["stop"] = request.config.stop
+        params = self._build_completion_params(request, model, stream=False)
 
         try:
             response = await self.client.chat.completions.create(**params)
@@ -200,25 +233,7 @@ class OpenAIProvider(BaseProvider):
     ) -> AsyncIterator[str]:
         """Stream a completion from OpenAI."""
         model = self._resolve_model(request.config.model)
-
-        # Build base parameters
-        params: dict[str, Any] = {
-            "model": model,
-            "messages": self._convert_messages(request.messages),
-            "stream": True,
-        }
-
-        # Handle max tokens - newer models use max_completion_tokens
-        if self._needs_completion_tokens(model):
-            params["max_completion_tokens"] = request.config.max_tokens
-        else:
-            params["max_tokens"] = request.config.max_tokens
-            params["temperature"] = request.config.temperature
-            params["top_p"] = request.config.top_p
-            params["frequency_penalty"] = request.config.frequency_penalty
-            params["presence_penalty"] = request.config.presence_penalty
-            if request.config.stop:
-                params["stop"] = request.config.stop
+        params = self._build_completion_params(request, model, stream=True)
 
         try:
             stream = await self.client.chat.completions.create(**params)
