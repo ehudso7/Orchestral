@@ -214,11 +214,13 @@ class OpenAIProvider(BaseProvider):
                 "top_p": request.config.top_p,
                 "frequency_penalty": request.config.frequency_penalty,
                 "presence_penalty": request.config.presence_penalty,
-                "stop": request.config.stop,
             }
             for key, value in optional_params.items():
                 if value is not None:
                     params[key] = value
+            # stop needs truthiness check to avoid sending empty lists
+            if request.config.stop:
+                params["stop"] = request.config.stop
 
         return params
 
