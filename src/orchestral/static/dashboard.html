@@ -255,7 +255,7 @@
     <script>
         // Configuration
         const API_BASE = window.location.origin;
-        const stripe = Stripe('pk_test_...'); // Add your Stripe public key
+        let stripe = null; // Will be initialized after loading config
 
         // Check authentication
         const token = localStorage.getItem('orchestral_token');
@@ -271,6 +271,20 @@
         // Initialize dashboard
         document.addEventListener('DOMContentLoaded', async () => {
             document.getElementById('userName').textContent = user.full_name || user.email;
+
+            // Load Stripe configuration
+            try {
+                const configResponse = await fetch('/billing/config');
+                if (configResponse.ok) {
+                    const config = await configResponse.json();
+                    if (config.stripe_publishable_key) {
+                        stripe = Stripe(config.stripe_publishable_key);
+                    }
+                }
+            } catch (error) {
+                console.error('Failed to load Stripe config:', error);
+            }
+
             await loadDashboardData();
             setupNavigation();
         });

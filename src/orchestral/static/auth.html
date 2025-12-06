@@ -345,10 +345,22 @@
 
                 showAlert('Login successful! Redirecting...', 'success');
 
-                // Redirect to dashboard
-                setTimeout(() => {
-                    window.location.href = '/dashboard';
-                }, 1500);
+                // Check if there was an intended plan (user was trying to subscribe)
+                const intendedPlan = localStorage.getItem('intended_plan');
+                if (intendedPlan) {
+                    localStorage.removeItem('intended_plan');
+                    // Redirect back to pricing with plan selection
+                    setTimeout(() => {
+                        window.location.href = `/#pricing`;
+                        // After page loads, trigger the checkout
+                        setTimeout(() => startCheckout(intendedPlan), 500);
+                    }, 1500);
+                } else {
+                    // Normal redirect to dashboard
+                    setTimeout(() => {
+                        window.location.href = '/dashboard';
+                    }, 1500);
+                }
 
             } catch (error) {
                 showAlert(error.response?.data?.detail || 'Login failed. Please try again.');
@@ -383,16 +395,35 @@
                     company: formData.get('company') || null
                 });
 
-                // Store token
+                // Store token and user data with API key
+                const userData = response.data.user;
+                // Store the API key temporarily if it's included in the response
+                if (userData.api_key) {
+                    // Show the API key to the user first
+                    showAlert(`Account created! Your API key: ${userData.api_key} (save this!)`, 'success');
+                } else {
+                    showAlert('Account created successfully! Redirecting...', 'success');
+                }
+
                 localStorage.setItem('orchestral_token', response.data.access_token);
-                localStorage.setItem('orchestral_user', JSON.stringify(response.data.user));
+                localStorage.setItem('orchestral_user', JSON.stringify(userData));
 
-                showAlert('Account created successfully! Redirecting...', 'success');
-
-                // Redirect to dashboard
-                setTimeout(() => {
-                    window.location.href = '/dashboard';
-                }, 1500);
+                // Check if there was an intended plan (user was trying to subscribe)
+                const intendedPlan = localStorage.getItem('intended_plan');
+                if (intendedPlan) {
+                    localStorage.removeItem('intended_plan');
+                    // Redirect back to pricing with plan selection
+                    setTimeout(() => {
+                        window.location.href = `/#pricing`;
+                        // After page loads, trigger the checkout
+                        setTimeout(() => startCheckout(intendedPlan), 500);
+                    }, 3000); // Longer delay to let user see API key
+                } else {
+                    // Normal redirect to dashboard
+                    setTimeout(() => {
+                        window.location.href = '/dashboard';
+                    }, 3000);
+                }
 
             } catch (error) {
                 showAlert(error.response?.data?.detail || 'Signup failed. Please try again.');

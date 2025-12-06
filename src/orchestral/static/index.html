@@ -19,6 +19,22 @@
     </script>
 </head>
 <body class="bg-gray-900 text-white">
+    <!-- Navigation Bar -->
+    <nav class="bg-gray-800 border-b border-gray-700">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16 items-center">
+                <div class="flex items-center">
+                    <h1 class="text-2xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+                        Orchestral
+                    </h1>
+                </div>
+                <div class="flex items-center space-x-4" id="navAuth">
+                    <!-- Auth buttons will be inserted here by JavaScript -->
+                </div>
+            </div>
+        </div>
+    </nav>
+
     <!-- Hero Section -->
     <header class="relative overflow-hidden">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
@@ -161,6 +177,21 @@ asyncio.run(main())</pre>
     </footer>
 
     <script>
+        // Store billing configuration
+        let billingConfig = null;
+
+        // Load billing configuration
+        async function loadBillingConfig() {
+            try {
+                const response = await fetch('/billing/config');
+                if (response.ok) {
+                    billingConfig = await response.json();
+                }
+            } catch (error) {
+                console.error('Failed to load billing config:', error);
+            }
+        }
+
         // Load pricing from API
         async function loadPricing() {
             try {
@@ -210,39 +241,135 @@ asyncio.run(main())</pre>
         }
 
         async function startCheckout(planId) {
+            // Check if user is logged in
+            const token = localStorage.getItem('orchestral_token');
+            const user = JSON.parse(localStorage.getItem('orchestral_user') || '{}');
+
             if (planId === 'free') {
-                window.location.href = '/docs';
+                // For free plan, direct to signup if not logged in
+                if (!token) {
+                    window.location.href = '/auth';
+                } else {
+                    window.location.href = '/dashboard';
+                }
                 return;
             }
 
-            const email = prompt('Enter your email to get started:');
-            if (!email) return;
+            // For paid plans, require authentication
+            if (!token) {
+                // Store the intended plan for after login
+                localStorage.setItem('intended_plan', planId);
+                window.location.href = '/auth';
+                return;
+            }
 
+            // User is authenticated, create checkout session
             try {
-                const response = await fetch('/v1/billing/checkout', {
+                // First ensure we have a Stripe customer
+                const customerResponse = await fetch('/billing/customers', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Api-Key': user.api_key
+                    },
                     body: JSON.stringify({
-                        email: email,
-                        plan_id: planId,
-                        success_url: window.location.origin + '/success',
-                        cancel_url: window.location.origin + '#pricing',
-                    }),
+                        email: user.email,
+                        name: user.full_name
+                    })
                 });
 
-                const data = await response.json();
-                if (data.checkout_url) {
-                    window.location.href = data.checkout_url;
+                if (!customerResponse.ok) {
+                    const error = await customerResponse.json();
+                    console.error('Customer creation failed:', error);
+                }
+
+                // Get the appropriate price ID based on plan from our config
+                const priceMap = billingConfig?.price_ids ? {
+                    'starter': billingConfig.price_ids.starter_monthly,
+                    'pro': billingConfig.price_ids.pro_monthly,
+                    'enterprise': billingConfig.price_ids.enterprise_monthly
+                } : {
+                    // Fallback to environment price IDs if config not loaded
+                    'starter': 'price_1QRoGhIv0l4EBRxBNqmvRJXC',
+                    'pro': 'price_1QRoGhIv0l4EBRxBKr0DKToa',
+                    'enterprise': 'price_1QRoGiIv0l4EBRxBI5vKX10f'
+                };
+
+                // Create checkout session
+                const checkoutResponse = await fetch('/billing/checkout', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Api-Key': user.api_key
+                    },
+                    body: JSON.stringify({
+                        price_id: priceMap[planId],
+                        success_url: window.location.origin + '/dashboard?success=true',
+                        cancel_url: window.location.origin + '/#pricing',
+                        trial_days: 14  // Optional trial period
+                    })
+                });
+
+                const checkoutData = await checkoutResponse.json();
+
+                if (checkoutResponse.ok && checkoutData.checkout_url) {
+                    // Redirect to Stripe Checkout
+                    window.location.href = checkoutData.checkout_url;
                 } else {
-                    alert('Failed to start checkout: ' + (data.detail || 'Unknown error'));
+                    // Handle error
+                    console.error('Checkout failed:', checkoutData);
+                    alert('Failed to create checkout session: ' + (checkoutData.detail || 'Please try again'));
                 }
             } catch (error) {
-                alert('Payment processing not configured yet. Contact support.');
+                console.error('Checkout error:', error);
+                alert('Failed to start checkout. Please ensure you are logged in and try again.');
             }
         }
 
-        // Load pricing on page load
-        loadPricing();
+        // Load pricing and config on page load
+        loadBillingConfig().then(() => {
+            loadPricing();
+        });
+
+        // Setup navigation
+        function setupNavigation() {
+            const token = localStorage.getItem('orchestral_token');
+            const user = JSON.parse(localStorage.getItem('orchestral_user') || '{}');
+            const navAuth = document.getElementById('navAuth');
+
+            if (token && user) {
+                // User is logged in
+                navAuth.innerHTML = `
+                    <span class="text-gray-300">Welcome, ${user.full_name || user.email}</span>
+                    <a href="/dashboard" class="bg-primary hover:bg-indigo-600 text-white px-4 py-2 rounded-lg font-semibold transition">
+                        Dashboard
+                    </a>
+                    <button onclick="logout()" class="text-gray-300 hover:text-white">
+                        Logout
+                    </button>
+                `;
+            } else {
+                // User is not logged in
+                navAuth.innerHTML = `
+                    <a href="/auth" class="text-gray-300 hover:text-white">
+                        Sign In
+                    </a>
+                    <a href="/auth" class="bg-primary hover:bg-indigo-600 text-white px-4 py-2 rounded-lg font-semibold transition">
+                        Get Started
+                    </a>
+                `;
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('orchestral_token');
+            localStorage.removeItem('orchestral_user');
+            localStorage.removeItem('intended_plan');
+            window.location.href = '/';
+        }
+
+        // Initialize navigation on page load
+        setupNavigation();
     </script>
 </body>
 </html>

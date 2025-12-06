@@ -223,6 +223,23 @@ async def get_billing_status(owner_id: str = Depends(get_current_owner)):
 # ==================== PLANS ENDPOINT ====================
 
 
+@router.get("/config", include_in_schema=False)
+async def get_billing_config():
+    """Get billing configuration including Stripe price IDs."""
+    settings = get_settings()
+
+    return {
+        "stripe_publishable_key": settings.stripe.publishable_key,
+        "price_ids": {
+            "starter_monthly": settings.stripe.price_starter_monthly_id,
+            "starter_yearly": settings.stripe.price_starter_yearly_id,
+            "pro_monthly": settings.stripe.price_pro_monthly_id,
+            "pro_yearly": settings.stripe.price_pro_yearly_id,
+            "enterprise_monthly": settings.stripe.price_enterprise_monthly_id,
+            "enterprise_yearly": settings.stripe.price_enterprise_yearly_id,
+        }
+    }
+
 @router.get("/plans", response_model=list[PlanResponse])
 async def list_plans():
     """List available subscription plans."""
