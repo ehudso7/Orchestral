@@ -11,6 +11,8 @@ from orchestral.prompts.manager import (
     PromptTemplate,
     PromptManager,
     get_prompt_manager,
+    configure_prompt_manager,
+    PromptStatus,
 )
 from orchestral.prompts.ab_testing import (
     Experiment,
@@ -18,6 +20,7 @@ from orchestral.prompts.ab_testing import (
     ExperimentResult,
     ABTestingManager,
     get_ab_manager,
+    configure_ab_manager,
 )
 
 __all__ = [
@@ -25,35 +28,13 @@ __all__ = [
     "PromptVersion",
     "PromptTemplate",
     "PromptManager",
+    "PromptStatus",
     "get_prompt_manager",
+    "configure_prompt_manager",
     "Experiment",
     "Variant",
     "ExperimentResult",
     "ABTestingManager",
     "get_ab_manager",
-Prompt management and optimization module.
-
-Provides versioned prompt templates, optimization, and A/B testing integration.
-"""
-
-from orchestral.prompts.manager import (
-    PromptManager,
-    PromptTemplate,
-    PromptVersion,
-    PromptConfig,
-)
-from orchestral.prompts.optimizer import (
-    PromptOptimizer,
-    OptimizationResult,
-    OptimizationStrategy,
-)
-
-__all__ = [
-    "PromptManager",
-    "PromptTemplate",
-    "PromptVersion",
-    "PromptConfig",
-    "PromptOptimizer",
-    "OptimizationResult",
-    "OptimizationStrategy",
+    "configure_ab_manager",
 ]
