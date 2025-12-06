@@ -39,12 +39,25 @@ class OpenAIProvider(BaseProvider):
     Supports:
     - GPT-4o (standard multimodal)
     - GPT-4o-mini (fast and cost-effective)
+    - o1, o3 reasoning models
     - o1/o3 series (reasoning models)
     """
 
     provider = ModelProvider.OPENAI
 
     # Models that require max_completion_tokens instead of max_tokens
+    # These models don't support temperature, top_p, frequency_penalty, etc.
+    COMPLETION_TOKEN_MODELS = frozenset({
+        "o1", "o1-mini", "o1-preview",
+        "o3", "o3-mini", "o3-preview",
+        "gpt-5.1", "gpt-5",  # Newer flagship models
+    })
+
+    def _uses_completion_tokens(self, model: str) -> bool:
+        """Check if model requires max_completion_tokens instead of max_tokens."""
+        model_lower = model.lower()
+        # Check exact prefix matches for reasoning/new models
+        return any(model_lower.startswith(rm) for rm in self.COMPLETION_TOKEN_MODELS)
     REASONING_MODELS = {"o1", "o1-mini", "o1-preview", "o3", "o3-mini", "gpt-5.1"}
 
     # Map fictional/placeholder models to real ones
@@ -132,6 +145,30 @@ class OpenAIProvider(BaseProvider):
     ) -> CompletionResponse:
         """Generate a completion using OpenAI."""
         start_time = time.perf_counter()
+        model = request.config.model
+        is_reasoning = self._uses_completion_tokens(model)
+
+        try:
+            # Build params - reasoning models use different parameters
+            params: dict[str, Any] = {
+                "model": model,
+                "messages": self._convert_messages(request.messages),
+                "stream": False,
+            }
+
+            if is_reasoning:
+                # Reasoning models (o1, o3) use max_completion_tokens
+                # and don't support temperature, top_p, etc.
+                params["max_completion_tokens"] = request.config.max_tokens
+            else:
+                # Standard models use max_tokens and support all params
+                params["max_tokens"] = request.config.max_tokens
+                params["temperature"] = request.config.temperature
+                params["top_p"] = request.config.top_p
+                params["frequency_penalty"] = request.config.frequency_penalty
+                params["presence_penalty"] = request.config.presence_penalty
+                params["stop"] = request.config.stop
+
         model = self._resolve_model(request.config.model)
 
         # Build base parameters
@@ -199,6 +236,29 @@ class OpenAIProvider(BaseProvider):
         request: CompletionRequest,
     ) -> AsyncIterator[str]:
         """Stream a completion from OpenAI."""
+        model = request.config.model
+        is_reasoning = self._uses_completion_tokens(model)
+
+        try:
+            # Build params - reasoning models use different parameters
+            params: dict[str, Any] = {
+                "model": model,
+                "messages": self._convert_messages(request.messages),
+                "stream": True,
+            }
+
+            if is_reasoning:
+                # Reasoning models (o1, o3) use max_completion_tokens
+                params["max_completion_tokens"] = request.config.max_tokens
+            else:
+                # Standard models use max_tokens and support all params
+                params["max_tokens"] = request.config.max_tokens
+                params["temperature"] = request.config.temperature
+                params["top_p"] = request.config.top_p
+                params["frequency_penalty"] = request.config.frequency_penalty
+                params["presence_penalty"] = request.config.presence_penalty
+                params["stop"] = request.config.stop
+
         model = self._resolve_model(request.config.model)
 
         # Build base parameters
