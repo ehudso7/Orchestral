@@ -38,6 +38,8 @@ from orchestral.billing.api_keys import APIKeyManager, APIKey, KeyTier, TIER_LIM
 from orchestral.billing.rate_limiter import RateLimiter
 from orchestral.billing.usage import UsageTracker
 from orchestral.billing.cache import ResponseCache
+from orchestral.billing.stripe_service import configure_stripe_service
+from orchestral.billing.stripe_webhooks import configure_webhook_handler
 
 # Enterprise features
 from orchestral.billing.semantic_cache import SemanticCache
@@ -59,6 +61,7 @@ rate_limiter: RateLimiter | None = None
 usage_tracker: UsageTracker | None = None
 response_cache: ResponseCache | None = None
 semantic_cache: SemanticCache | None = None
+stripe_service: Any = None
 redis_client: Any = None
 
 
@@ -187,7 +190,7 @@ class CommercialRateLimitMiddleware(BaseHTTPMiddleware):
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     """Application lifespan handler."""
-    global orchestrator, api_key_manager, rate_limiter, usage_tracker, response_cache, semantic_cache
+    global orchestrator, api_key_manager, rate_limiter, usage_tracker, response_cache, semantic_cache, stripe_service
 
     setup_logging()
     logger.info("Starting Orchestral API server (Enterprise Edition)")
@@ -223,6 +226,14 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         default_ttl_seconds=settings.billing.cache_ttl_seconds,
         enabled=settings.billing.cache_enabled,
     )
+
+    # Initialize Stripe service for payments
+    if settings.stripe.is_configured:
+        stripe_service = configure_stripe_service(redis_client=redis)
+        configure_webhook_handler(stripe_service=stripe_service)
+        logger.info("Stripe payment service initialized")
+    else:
+        logger.warning("Stripe not configured - payment features disabled")
 
     # Configure enterprise modules with Redis
     exporters = [ConsoleTraceExporter()]
@@ -270,6 +281,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         "Enterprise services initialized",
         redis_connected=redis is not None,
         cache_enabled=settings.billing.cache_enabled,
+        stripe_enabled=settings.stripe.is_configured,
         features=[
             "semantic_caching",
             "distributed_tracing",
@@ -280,6 +292,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             "smart_routing",
             "guardrails",
             "evaluation",
+            "stripe_payments" if settings.stripe.is_configured else None,
         ],
     )
 
@@ -316,6 +329,10 @@ def create_app() -> FastAPI:
     # Include enterprise router
     from orchestral.api.enterprise import enterprise_router
     app.include_router(enterprise_router)
+
+    # Include billing/subscriptions router
+    from orchestral.api.subscriptions import router as subscriptions_router
+    app.include_router(subscriptions_router)
 
     return app
 
