@@ -475,9 +475,14 @@ async def list_api_keys(current_user: dict[str, Any] = Depends(get_current_user)
     }
 
 
+class CreateAPIKeyRequest(BaseModel):
+    """Request to create an API key."""
+    name: str = Field(..., description="Key name")
+
+
 @router.post("/api-keys")
 async def create_api_key(
-    name: str,
+    request: CreateAPIKeyRequest,
     current_user: dict[str, Any] = Depends(get_current_user),
 ):
     """Create a new API key."""
@@ -488,7 +493,7 @@ async def create_api_key(
         tier = KeyTier(current_user.get("tier", "free").upper())
 
         raw_key, api_key = api_key_manager.generate_key(
-            name=name,
+            name=request.name,
             tier=tier,
             owner_id=current_user["id"],
         )
@@ -496,7 +501,7 @@ async def create_api_key(
         # Save to database
         db.save_api_key(api_key.key_id, {
             "key_id": api_key.key_id,
-            "name": name,
+            "name": request.name,
             "owner_id": current_user["id"],
             "tier": tier.value.lower(),
             "created_at": datetime.now(timezone.utc).isoformat(),
@@ -522,7 +527,7 @@ async def create_api_key(
         # Save to database
         db.save_api_key(key_id, {
             "key_id": key_id,
-            "name": name,
+            "name": request.name,
             "owner_id": current_user["id"],
             "tier": current_user.get("tier", "free"),
             "created_at": datetime.now(timezone.utc).isoformat(),
@@ -533,7 +538,7 @@ async def create_api_key(
         return {
             "key": raw_key,
             "key_id": key_id,
-            "name": name,
+            "name": request.name,
             "tier": current_user.get("tier", "free"),
             "warning": "Store this key securely. You won't be able to see it again.",
         }
