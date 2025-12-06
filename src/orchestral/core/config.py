@@ -150,6 +150,47 @@ class RedisSettings(BaseSettings):
         )
 
 
+class StripeSettings(BaseSettings):
+    """Stripe payment settings."""
+
+    model_config = SettingsConfigDict(
+        env_prefix="STRIPE_",
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
+
+    # API Keys
+    secret_key: SecretStr | None = Field(default=None, alias="STRIPE_SECRET_KEY")
+    publishable_key: str | None = Field(default=None, alias="STRIPE_PUBLISHABLE_KEY")
+    webhook_secret: SecretStr | None = Field(default=None, alias="STRIPE_WEBHOOK_SECRET")
+
+    # Mode
+    test_mode: bool = Field(default=True, description="Use Stripe test mode")
+
+    # Product IDs (create in Stripe Dashboard or via API)
+    product_free_id: str | None = None
+    product_starter_id: str | None = None
+    product_pro_id: str | None = None
+    product_enterprise_id: str | None = None
+
+    # Price IDs for subscriptions
+    price_starter_monthly_id: str | None = None
+    price_starter_yearly_id: str | None = None
+    price_pro_monthly_id: str | None = None
+    price_pro_yearly_id: str | None = None
+    price_enterprise_monthly_id: str | None = None
+    price_enterprise_yearly_id: str | None = None
+
+    # Metered billing price ID (for usage-based)
+    price_metered_tokens_id: str | None = None
+
+    @property
+    def is_configured(self) -> bool:
+        """Check if Stripe is configured."""
+        return self.secret_key is not None
+
+
 class BillingSettings(BaseSettings):
     """Billing and commercial settings."""
 
@@ -231,6 +272,7 @@ class Settings(BaseSettings):
     server: ServerSettings = Field(default_factory=ServerSettings)
     redis: RedisSettings = Field(default_factory=RedisSettings)
     billing: BillingSettings = Field(default_factory=BillingSettings)
+    stripe: StripeSettings = Field(default_factory=StripeSettings)
 
     # Environment
     environment: str = Field(default="development", alias="ENVIRONMENT")
