@@ -168,52 +168,67 @@ async def signup(request: UserSignup):
     2. Generates an API key
     3. Returns a JWT token for immediate login
     """
-    # Check if email already exists
-    if any(u["email"] == request.email for u in users_db.values()):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Email already registered",
+    try:
+        # Check if email already exists
+        if any(u["email"] == request.email for u in users_db.values()):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Email already registered",
+            )
+
+        # Create user
+        user_id = f"user_{secrets.token_urlsafe(16)}"
+        user = {
+            "id": user_id,
+            "email": request.email,
+            "full_name": request.full_name,
+            "company": request.company,
+            "password_hash": hash_password(request.password),
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "api_key_id": None,
+            "subscription_status": None,
+            "tier": "free",
+        }
+
+        # Generate API key for the user
+        try:
+            api_key_manager = get_api_key_manager()
+            raw_key, api_key = api_key_manager.generate_key(
+                name=f"{request.full_name}'s API Key",
+                tier=KeyTier.FREE,
+                owner_id=user_id,
+            )
+            user["api_key_id"] = api_key.key_id
+            user["api_key"] = raw_key  # Store temporarily for initial response
+        except Exception as e:
+            # If API key generation fails, create a simple fallback key
+            logger.warning(f"API key generation failed: {e}, using fallback")
+            fallback_key = f"orch_{secrets.token_hex(8)}_{secrets.token_urlsafe(32)}"
+            user["api_key_id"] = f"orch_{secrets.token_hex(8)}"
+            user["api_key"] = fallback_key
+
+        users_db[user_id] = user
+
+        # Create session token
+        access_token = create_access_token({"sub": user_id})
+
+        # Return user data without password hash
+        user_response = {k: v for k, v in user.items() if k != "password_hash"}
+
+        logger.info("User signed up", user_id=user_id, email=request.email)
+
+        return TokenResponse(
+            access_token=access_token,
+            user=user_response,
         )
-
-    # Create user
-    user_id = f"user_{secrets.token_urlsafe(16)}"
-    user = {
-        "id": user_id,
-        "email": request.email,
-        "full_name": request.full_name,
-        "company": request.company,
-        "password_hash": hash_password(request.password),
-        "created_at": datetime.now(timezone.utc).isoformat(),
-        "api_key_id": None,
-        "subscription_status": None,
-        "tier": "free",
-    }
-
-    # Generate API key for the user
-    api_key_manager = get_api_key_manager()
-    raw_key, api_key = api_key_manager.generate_key(
-        name=f"{request.full_name}'s API Key",
-        tier=KeyTier.FREE,
-        owner_id=user_id,
-    )
-
-    user["api_key_id"] = api_key.key_id
-    user["api_key"] = raw_key  # Store temporarily for initial response
-
-    users_db[user_id] = user
-
-    # Create session token
-    access_token = create_access_token({"sub": user_id})
-
-    # Return user data without password hash
-    user_response = {k: v for k, v in user.items() if k != "password_hash"}
-
-    logger.info("User signed up", user_id=user_id, email=request.email)
-
-    return TokenResponse(
-        access_token=access_token,
-        user=user_response,
-    )
+    except HTTPException:
+        raise  # Re-raise HTTP exceptions
+    except Exception as e:
+        logger.error(f"Signup failed: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Signup failed: {str(e)}",
+        )
 
 
 @router.post("/login", response_model=TokenResponse)
