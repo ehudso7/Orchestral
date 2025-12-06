@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Support - Orchestral</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Navigation -->
+    <nav class="bg-white shadow-lg sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <a href="/" class="text-2xl font-bold gradient-bg bg-clip-text text-transparent">Orchestral</a>
+                </div>
+                <div class="flex items-center space-x-6">
+                    <a href="/docs" class="text-gray-600 hover:text-gray-900">Documentation</a>
+                    <a href="/pricing" class="text-gray-600 hover:text-gray-900">Pricing</a>
+                    <a href="/about" class="text-gray-600 hover:text-gray-900">About</a>
+                    <div id="navAuth" class="flex items-center space-x-4"></div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Content -->
+    <div class="max-w-7xl mx-auto px-4 py-12">
+        <div class="text-center mb-12">
+            <h1 class="text-4xl font-bold text-gray-900 mb-4">How Can We Help?</h1>
+            <p class="text-xl text-gray-600">Get support for Orchestral AI Platform</p>
+        </div>
+
+        <!-- Search Bar -->
+        <div class="max-w-2xl mx-auto mb-12">
+            <div class="relative">
+                <input type="text" placeholder="Search for help..." class="w-full px-4 py-3 pl-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+                <i class="fas fa-search absolute left-4 top-4 text-gray-400"></i>
+            </div>
+        </div>
+
+        <!-- Support Options -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
+            <div class="bg-white rounded-xl shadow-lg p-6 text-center hover:shadow-xl transition-all">
+                <div class="w-16 h-16 bg-purple-100 rounded-full mx-auto mb-4 flex items-center justify-center">
+                    <i class="fas fa-book text-purple-600 text-2xl"></i>
+                </div>
+                <h3 class="text-xl font-semibold text-gray-900 mb-2">Documentation</h3>
+                <p class="text-gray-600 mb-4">Comprehensive guides and API references</p>
+                <a href="/docs" class="text-purple-600 hover:text-purple-700 font-medium">View Docs →</a>
+            </div>
+
+            <div class="bg-white rounded-xl shadow-lg p-6 text-center hover:shadow-xl transition-all">
+                <div class="w-16 h-16 bg-blue-100 rounded-full mx-auto mb-4 flex items-center justify-center">
+                    <i class="fas fa-comments text-blue-600 text-2xl"></i>
+                </div>
+                <h3 class="text-xl font-semibold text-gray-900 mb-2">Community</h3>
+                <p class="text-gray-600 mb-4">Connect with other developers</p>
+                <a href="https://discord.gg/orchestral" target="_blank" class="text-purple-600 hover:text-purple-700 font-medium">Join Discord →</a>
+            </div>
+
+            <div class="bg-white rounded-xl shadow-lg p-6 text-center hover:shadow-xl transition-all">
+                <div class="w-16 h-16 bg-green-100 rounded-full mx-auto mb-4 flex items-center justify-center">
+                    <i class="fas fa-envelope text-green-600 text-2xl"></i>
+                </div>
+                <h3 class="text-xl font-semibold text-gray-900 mb-2">Email Support</h3>
+                <p class="text-gray-600 mb-4">Get help from our support team</p>
+                <a href="mailto:support@orchestral.ai" class="text-purple-600 hover:text-purple-700 font-medium">Contact Us →</a>
+            </div>
+        </div>
+
+        <!-- FAQ Section -->
+        <div class="bg-white rounded-xl shadow-lg p-8 mb-12">
+            <h2 class="text-2xl font-bold text-gray-900 mb-6">Frequently Asked Questions</h2>
+
+            <div class="space-y-6">
+                <div class="border-b pb-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-2">How do I get started with Orchestral?</h3>
+                    <p class="text-gray-600">Sign up for a free account, generate your API key from the dashboard, and follow our quickstart guide to make your first API call.</p>
+                </div>
+
+                <div class="border-b pb-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-2">What models are supported?</h3>
+                    <p class="text-gray-600">We support all major models from OpenAI (GPT-4, GPT-3.5), Anthropic (Claude 3), and Google (Gemini Pro).</p>
+                </div>
+
+                <div class="border-b pb-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-2">How is billing calculated?</h3>
+                    <p class="text-gray-600">Billing is based on your subscription tier and usage. Each tier includes a set number of API calls and tokens per month.</p>
+                </div>
+
+                <div class="border-b pb-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-2">Can I switch between models?</h3>
+                    <p class="text-gray-600">Yes! You can specify which model to use for each request, or let our intelligent routing automatically select the best model.</p>
+                </div>
+
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-900 mb-2">What's the uptime SLA?</h3>
+                    <p class="text-gray-600">We offer 99.9% uptime for Starter plans and above, with 99.99% for Enterprise customers.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Contact Form -->
+        <div class="bg-white rounded-xl shadow-lg p-8">
+            <h2 class="text-2xl font-bold text-gray-900 mb-6">Contact Support</h2>
+
+            <form class="space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Name</label>
+                        <input type="text" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                        <input type="email" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Subject</label>
+                    <select class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500">
+                        <option>Technical Support</option>
+                        <option>Billing Question</option>
+                        <option>Feature Request</option>
+                        <option>Bug Report</option>
+                        <option>Other</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Message</label>
+                    <textarea rows="6" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500"></textarea>
+                </div>
+
+                <button type="submit" class="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition-all font-medium">
+                    Send Message
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-gray-900 text-gray-300 mt-20">
+        <div class="max-w-7xl mx-auto px-4 py-12">
+            <div class="text-center">
+                <p>&copy; 2024 Orchestral. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Setup navigation
+        document.addEventListener('DOMContentLoaded', () => {
+            const token = localStorage.getItem('orchestral_token');
+            const navAuth = document.getElementById('navAuth');
+
+            if (token) {
+                navAuth.innerHTML = `
+                    <a href="/dashboard" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg font-semibold transition">
+                        Dashboard
+                    </a>
+                `;
+            } else {
+                navAuth.innerHTML = `
+                    <a href="/auth" class="text-gray-600 hover:text-gray-900">Sign In</a>
+                    <a href="/auth" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg font-semibold transition">
+                        Get Started
+                    </a>
+                `;
+            }
+        });
+    </script>
+</body>
+</html>

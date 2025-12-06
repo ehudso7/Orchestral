@@ -403,6 +403,22 @@ def create_app() -> FastAPI:
                 return FileResponse(str(about_file))
             return {"error": "About page not found"}
 
+        @app.get("/support", include_in_schema=False)
+        async def serve_support_page():
+            """Serve the support page."""
+            support_file = static_dir / "support.html"
+            if support_file.exists():
+                return FileResponse(str(support_file))
+            return {"error": "Support page not found"}
+
+        @app.get("/docs", include_in_schema=False)
+        async def serve_docs_page():
+            """Serve the documentation page."""
+            docs_file = static_dir / "docs.html"
+            if docs_file.exists():
+                return FileResponse(str(docs_file))
+            return {"error": "Docs page not found"}
+
     return app
 
 
